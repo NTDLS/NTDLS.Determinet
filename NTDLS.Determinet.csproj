@@ -9,13 +9,13 @@
     <PackageProjectUrl>https://github.com/NTDLS/NTDLS.Determinet</PackageProjectUrl>
     <RepositoryUrl>https://github.com/NTDLS/NTDLS.Determinet</RepositoryUrl>
     <PackageTags>machine-learning;ai;neural-network</PackageTags>
-    <PackageReleaseNotes>Initial public release</PackageReleaseNotes>
+    <PackageReleaseNotes>Updated documentation and examples public release</PackageReleaseNotes>
     <RepositoryType>git</RepositoryType>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <Company>NetworkDLS</Company>
-    <AssemblyVersion>1.0.0</AssemblyVersion>
-    <FileVersion>1.0.0</FileVersion>
-    <VersionPrefix>1.0.0</VersionPrefix>
+    <AssemblyVersion>1.0.1</AssemblyVersion>
+    <FileVersion>1.0.1</FileVersion>
+    <VersionPrefix>1.0.1</VersionPrefix>
     <version></version>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageIcon>Logo.png</PackageIcon>
