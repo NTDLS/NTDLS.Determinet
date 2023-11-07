@@ -1,9 +1,8 @@
 # Determinet
+
+📦 Be sure to check out the NuGet pacakge: https://www.nuget.org/packages/NTDLS.Determinet
+
 Determinet is versatile multilayer perception neural network designed for extendibility and genetic-style mutations to allow forward propagation of the network variants.
-
-
-Find the latest Nuget package on https://www.nuget.org/packages/NTDLS.Determinet
-
 
 Below is a simple example of using the network to navigate a maze or other obstacles for a simple simulation.
 You can find more advanced examples as well as working models of this in the AIVolution project:
