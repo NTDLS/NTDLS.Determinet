@@ -8,6 +8,8 @@ Below is a simple example of using the network to navigate a maze or other obsta
 You can find more advanced examples as well as working models of this in the AIVolution project:
 https://github.com/NTDLS/AIVolution
 
+If you are in a fighting mood, you can also battle it out against some of these trained models in the Space Flight Shooter Game: https://github.com/NTDLS/NebulaSiege
+
 ```csharp
 public enum AIInputs
 {
