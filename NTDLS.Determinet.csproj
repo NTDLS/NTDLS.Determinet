@@ -24,6 +24,8 @@
     <VersionPrefix>1.1.3</VersionPrefix>
     <version></version>
     <PackageReadmeFile>README.md</PackageReadmeFile>
+    <IncludeSymbols>True</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <PackageIcon>Logo.png</PackageIcon>
     <Nullable>enable</Nullable>
   </PropertyGroup>
