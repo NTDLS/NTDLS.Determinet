@@ -36,7 +36,6 @@ namespace TestHarness
 
             var dni = new DniNeuralNetwork([imageWidth * imageHeight, 128, 10]);
 
-
             //Add input layer.
             //dni.Layers.AddInput(ActivationType.LeakyReLU, imageWidth * imageHeight);
 

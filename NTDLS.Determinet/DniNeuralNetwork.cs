@@ -8,10 +8,6 @@ namespace NTDLS.Determinet
         [JsonProperty]
         private readonly List<DniLayer> _layers = new();
 
-        public DniNeuralNetwork()
-        {
-        }
-
         public DniNeuralNetwork(int[] layerSizes)
         {
             _layers = new List<DniLayer>();
@@ -20,6 +16,11 @@ namespace NTDLS.Determinet
             {
                 _layers.Add(new DniLayer(layerSizes[i - 1], layerSizes[i], DniActivationType.Sigmoid));
             }
+        }
+
+        private DniNeuralNetwork(List<DniLayer> layers)
+        {
+            _layers = layers;
         }
 
         public double[] FeedForward(double[] inputs)
@@ -58,23 +59,22 @@ namespace NTDLS.Determinet
 
         public void SaveToFile(string fileName)
         {
-            var jsonText = JsonConvert.SerializeObject(this, Formatting.Indented);
+            var jsonText = JsonConvert.SerializeObject(_layers, Formatting.Indented);
             File.WriteAllText(fileName, jsonText);
         }
 
         public static DniNeuralNetwork LoadFromFile(string fileName)
         {
             var jsonText = File.ReadAllText(fileName);
-            var instance = JsonConvert.DeserializeObject<DniNeuralNetwork>(jsonText)
+            var layers = JsonConvert.DeserializeObject<List<DniLayer>>(jsonText)
                 ?? throw new Exception("Failed to deserialize the network.");
 
-            foreach (var layer in instance._layers)
+            foreach (var layer in layers)
             {
                 layer.InstantiateActivationFunction();
             }
 
-            return instance;
+            return new DniNeuralNetwork(layers);
         }
     }
 }
-

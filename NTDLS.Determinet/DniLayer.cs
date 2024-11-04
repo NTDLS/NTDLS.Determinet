@@ -5,7 +5,7 @@ using NTDLS.Determinet.Types;
 
 namespace NTDLS.Determinet
 {
-    public class DniLayer
+    internal class DniLayer
     {
         [JsonProperty]
         private readonly int _inputSize;
@@ -23,13 +23,17 @@ namespace NTDLS.Determinet
         private readonly DniNamedFunctionParameters? _activationParameter;
         private IDniActivationFunction _activationFunction;
 
-        public DniLayer()
+        /// <summary>
+        /// Used only for deserialization.
+        /// </summary>
+        internal DniLayer()
         {
             _weights = new double[0, 0];
             _biases = Array.Empty<double>();
+            _activationFunction = new DniSigmoidFunction();
         }
 
-        public DniLayer(int inputSize, int outputSize, DniActivationType activationType, DniNamedFunctionParameters? activationParameter = null)
+        internal DniLayer(int inputSize, int outputSize, DniActivationType activationType, DniNamedFunctionParameters? activationParameter = null)
         {
             _activationType = activationType;
             _activationParameter = activationParameter;
