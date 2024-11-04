@@ -1,5 +1,4 @@
 ﻿using NTDLS.Determinet.ActivationFunctions.Interfaces;
-using NTDLS.Determinet.Types;
 
 namespace NTDLS.Determinet.ActivationFunctions
 {
@@ -10,16 +9,11 @@ namespace NTDLS.Determinet.ActivationFunctions
     /// through 0.5 to 1.0. For a long time, through the early 1990s, it was the default activation used on neural networks.
     /// </summary>
     [Serializable]
-    public class DniSigmoidFunction : DniIActivationFunction
+    public class DniSigmoidFunction : IDniActivationFunction
     {
-        public DniSigmoidFunction(DniNamedFunctionParameters param)
-        {
-        }
-
         public double Activation(double x)
         {
-            double k = (double)Math.Exp(x);
-            return k / (1.0f + k);
+            return 1.0 / (1.0 + Math.Exp(-x));
         }
 
         public double Derivative(double x)

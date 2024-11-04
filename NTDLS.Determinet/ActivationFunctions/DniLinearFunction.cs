@@ -8,7 +8,7 @@ namespace NTDLS.Determinet.ActivationFunctions
     /// Linear bounded activation function.
     /// </summary>
     [Serializable]
-    public class DniLinearFunction : DniIActivationFunction
+    public class DniLinearFunction : IDniActivationFunction
     {
         // linear slope value
         private double alpha;
@@ -30,10 +30,12 @@ namespace NTDLS.Determinet.ActivationFunctions
             set { range = value; }
         }
 
-        public DniLinearFunction(DniNamedFunctionParameters param)
+        public DniLinearFunction(DniNamedFunctionParameters? param)
         {
+            if (param == null) throw new ArgumentNullException(nameof(param));
+
             Alpha = param.Get<double>("Alpha", 1);
-            Range = param.Get<DniRange>("Range", new DniRange(-1, +1));
+            Range = param.Get("Range", new DniRange(-1, +1));
         }
 
         public double Activation(double x)

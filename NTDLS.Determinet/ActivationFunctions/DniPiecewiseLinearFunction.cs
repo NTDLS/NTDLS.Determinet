@@ -8,7 +8,7 @@ namespace NTDLS.Determinet.ActivationFunctions
     /// Function that combines a linear segment for certain input range with a Leaky ReLU-like behavior for values outside that range. 
     /// </summary>
     [Serializable]
-    public class DniPiecewiseLinearFunction : DniIActivationFunction
+    public class DniPiecewiseLinearFunction : IDniActivationFunction
     {
         /// <summary>
         /// Linear slope value.

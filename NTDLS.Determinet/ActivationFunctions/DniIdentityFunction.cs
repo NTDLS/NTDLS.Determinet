@@ -9,9 +9,9 @@ namespace NTDLS.Determinet.ActivationFunctions
     /// function, an identity function simply passes the input through the layer unchanged.
     /// </summary>
     [Serializable]
-    public class DniIdentityFunction : DniIActivationFunction
+    public class DniIdentityFunction : IDniActivationFunction
     {
-        public DniIdentityFunction(DniNamedFunctionParameters param)
+        public DniIdentityFunction(DniNamedFunctionParameters? param)
         {
         }
 

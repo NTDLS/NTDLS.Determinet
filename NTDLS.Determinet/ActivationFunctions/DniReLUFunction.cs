@@ -1,5 +1,4 @@
 ﻿using NTDLS.Determinet.ActivationFunctions.Interfaces;
-using NTDLS.Determinet.Types;
 
 namespace NTDLS.Determinet.ActivationFunctions
 {
@@ -9,12 +8,8 @@ namespace NTDLS.Determinet.ActivationFunctions
     ///  because a model that uses it is easier to train and often achieves better performance.
     /// </summary>
     [Serializable]
-    public class DniReLUFunction : DniIActivationFunction
+    public class DniReLUFunction : IDniActivationFunction
     {
-        public DniReLUFunction(DniNamedFunctionParameters param)
-        {
-        }
-
         public double Activation(double x)
         {
             if (x > 0)

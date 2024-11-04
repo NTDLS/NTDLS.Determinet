@@ -1,158 +1,127 @@
 ﻿using NTDLS.Determinet;
-using NTDLS.Determinet.Types;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.PixelFormats;
+using SixLabors.ImageSharp.Processing;
 
 namespace TestHarness
 {
     internal class Program
     {
-        public enum AIInputs
-        {
-            DistanceFromObstacle,
-            AngleToObstacleInDecimalDegrees
-        }
-
-        public enum AIOutputs
-        {
-            MoveAway,
-            AdjustSpeed
-        }
-
         static void Main()
         {
-            TrainAndSaveModel("./TestHarness.json");
+            var trainedModelFilename = "trained.json";
 
-            //Note that if you want to use the model in different threads, you will need to
-            //  make a clone since the values of the input nodes are altered when making decisions.
-            //  Fortunately, this can be easily accomplished with a call to Clone();
-            var network = LoadSavedModel("./TestHarness.json");
-
-            var decidingFactors = GatherInputs(); //Get decision inputs.
-
-            var decisions = network.FeedForward(decidingFactors); //Make decisions.
-
-            //Handle the speed decisions.
-            var shouldAdjustSpeed = decisions.Get(AIOutputs.AdjustSpeed);
-            if (shouldAdjustSpeed > 0.8)
+            DniNeuralNetwork dni;
+            if (File.Exists(trainedModelFilename))
             {
-                //Adjust speed up.
+                dni = DniNeuralNetwork.LoadFromFile(trainedModelFilename)
+                    ?? throw new Exception("Failed to load the network from file.");
             }
-            else if (shouldAdjustSpeed < 0.2)
+            else
             {
-                //Adjust speed down.
+                dni = TrainAndSave(trainedModelFilename);
             }
 
-            //Handle the heading direction.
-            var shouldMoveAway = decisions.Get(AIOutputs.MoveAway);
-            if (shouldMoveAway > 0.9)
-            {
-                //Change heading. Maybe just turn around completely?
-            }
+            var imageBytes = GetImageGrayscaleBytes(@"C:\Users\ntdls\Desktop\digit\4\34_00016.png");
+
+            var result = dni.FeedForward(imageBytes.Select(o => (double)o).ToArray());
         }
 
-        /// <summary>
-        /// Get the input values we need to make a decision.
-        /// </summary>
-        /// <returns></returns>
-        static DniNamedInterfaceParameters GatherInputs()
+        static DniNeuralNetwork TrainAndSave(string trainedModelFilename)
         {
-            //Here we are just using some dummy values, in this hypothetical situation
-            //  we would be getting the distance from a wall and the angle to it.
+            int imageWidth = 28;
+            int imageHeight = 28;
 
-            double idealMaxDistance = 1000;
-            double distanceFromObstacle = 500;
+            int outputNodes = 10;
 
-            double percentageOfCloseness = (distanceFromObstacle / idealMaxDistance);
-            double angleToObstacleInDecimalDegrees = 0.8;
+            var dni = new DniNeuralNetwork([imageWidth * imageHeight, 128, 10]);
 
-            var aiParams = new DniNamedInterfaceParameters();
-            aiParams.Set(AIInputs.DistanceFromObstacle, percentageOfCloseness);
-            aiParams.Set(AIInputs.AngleToObstacleInDecimalDegrees, angleToObstacleInDecimalDegrees);
-            return aiParams;
-        }
 
-        static DniNeuralNetwork LoadSavedModel(string fileName)
-        {
-            return DniNeuralNetwork.LoadFromFile(fileName)
-                ?? throw new Exception("Failed to load the network from file.");
-        }
-
-        static void TrainAndSaveModel(string fileName)
-        {
-            var Network = new DniNeuralNetwork
-            {
-                LearningRate = 0.01
-            };
-
-            //Add input layer
-            Network.Layers.AddInput(ActivationType.LeakyReLU,
-                [
-                AIInputs.DistanceFromObstacle,
-                AIInputs.AngleToObstacleInDecimalDegrees
-                ]);
+            //Add input layer.
+            //dni.Layers.AddInput(ActivationType.LeakyReLU, imageWidth * imageHeight);
 
             //Add a intermediate "hidden" layer. You can add more if you like.
-            Network.Layers.AddIntermediate(ActivationType.Sigmoid, 8);
+            //dni.Layers.AddIntermediate(ActivationType.LeakyReLU, 128);
 
             //Add the output layer.
-            Network.Layers.AddOutput(
-                [
-                AIOutputs.MoveAway,
-                AIOutputs.AdjustSpeed
-                ]);
+            //dni.Layers.AddOutput(outputNodes); //One node per digit.
 
-            //Train the model with some input scenarios. Look at TrainingScenario() and TrainingDecision()
-            //  to see that these ominous looking numbers are actually just named inputs. Its pretty simple really.
-            for (int epoch = 0; epoch < 5000; epoch++)
+            var digitFolders = Directory.GetDirectories(@"C:\Users\ntdls\Desktop\digit");
+            foreach (var digitFolder in digitFolders)
             {
-                //Very close to observed object, slow way down and get away
-                Network.BackPropagate(TrainingScenario(0, 0), TrainingDecision(1, 0));
-                Network.BackPropagate(TrainingScenario(0, -1), TrainingDecision(1, 0));
-                Network.BackPropagate(TrainingScenario(0, 1), TrainingDecision(1, 0));
-                Network.BackPropagate(TrainingScenario(0, 0.5), TrainingDecision(1, 0));
-                Network.BackPropagate(TrainingScenario(0, -0.5), TrainingDecision(1, 0));
+                var imagePaths = Directory.GetFiles(digitFolder, "*.png");
 
-                //Pretty close to observed object, slow down a bit and get away.
-                Network.BackPropagate(TrainingScenario(0.25, 0), TrainingDecision(1, 0.2));
-                Network.BackPropagate(TrainingScenario(0.25, -1), TrainingDecision(1, 0.2));
-                Network.BackPropagate(TrainingScenario(0.25, 1), TrainingDecision(1, 0.2));
-                Network.BackPropagate(TrainingScenario(0.25, 0.5), TrainingDecision(1, 0.2));
-                Network.BackPropagate(TrainingScenario(0.25, -0.5), TrainingDecision(1, 0.2));
+                var outputCharacter = digitFolder[digitFolder.Length - 1]; //Use the name of the folder as the expected output character for training.
 
-                //Very far from observed object, speed up and maintain heading.
-                Network.BackPropagate(TrainingScenario(1, 0), TrainingDecision(0, 1));
-                Network.BackPropagate(TrainingScenario(1, -1), TrainingDecision(0, 1));
-                Network.BackPropagate(TrainingScenario(1, 1), TrainingDecision(0, 1));
-                Network.BackPropagate(TrainingScenario(1, 0.5), TrainingDecision(0, 1));
-                Network.BackPropagate(TrainingScenario(1, -0.5), TrainingDecision(0, 1));
+                //Create the expected output layer:
+                var outputs = new double[outputNodes];
+                outputs[outputCharacter - 48] = 1;
 
-                //Pretty far from observed object, maintain heading but don't change speed.
-                Network.BackPropagate(TrainingScenario(0.75, 0), TrainingDecision(0, 0.5));
-                Network.BackPropagate(TrainingScenario(0.75, -1), TrainingDecision(0, 0.5));
-                Network.BackPropagate(TrainingScenario(0.75, 1), TrainingDecision(0, 0.5));
-                Network.BackPropagate(TrainingScenario(0.75, 0.5), TrainingDecision(0, 0.5));
-                Network.BackPropagate(TrainingScenario(0.75, -0.5), TrainingDecision(0, 0.5));
+                Console.WriteLine($"Training on '{outputCharacter}' with {imagePaths.Length:n0} samples.");
+
+                foreach (var imagePath in imagePaths)
+                {
+                    var imageBytes = GetImageGrayscaleBytes(imagePath, imageWidth, imageHeight);
+
+                    dni.Train(imageBytes.Select(o => (double)o).ToArray(), outputs);
+                }
             }
 
-            static DniNamedInterfaceParameters TrainingScenario(double distanceFromObstacle, double angleToObstacleInDecimalDegrees)
-            {
-                var param = new DniNamedInterfaceParameters();
-                param.Set(AIInputs.DistanceFromObstacle, distanceFromObstacle);
-                param.Set(AIInputs.AngleToObstacleInDecimalDegrees, angleToObstacleInDecimalDegrees);
-                return param;
-            }
+            Console.WriteLine();
 
-            static DniNamedInterfaceParameters TrainingDecision(double moveAway, double adjustSpeed)
-            {
-                var param = new DniNamedInterfaceParameters();
+            dni.SaveToFile(trainedModelFilename);
 
-                param.Set(AIOutputs.MoveAway, moveAway);
-                param.Set(AIOutputs.AdjustSpeed, adjustSpeed);
-                return param;
-            }
-
-            //Save the network to a file. This is only done here for examples sake.
-            Network.Save(fileName);
+            return dni;
         }
 
+        static byte[] GetImageGrayscaleBytes(string imagePath, int resizeWidth = 28, int resizeHeight = 28)
+        {
+            var fileBytes = File.ReadAllBytes(imagePath);
+            using var img = Image.Load<Rgba32>(new MemoryStream(fileBytes));
+
+            // Define initial bounds
+            int left = img.Width, right = 0, top = img.Height, bottom = 0;
+
+            // Loop through pixels to find non-white areas
+            for (int y = 0; y < img.Height; y++)
+            {
+                for (int x = 0; x < img.Width; x++)
+                {
+                    Rgba32 pixel = img[x, y];
+                    if (pixel.R < 255 || pixel.G < 255 || pixel.B < 255) // Adjust for your background color
+                    {
+                        if (x < left) left = x;
+                        if (x > right) right = x;
+                        if (y < top) top = y;
+                        if (y > bottom) bottom = y;
+                    }
+                }
+            }
+
+            // Calculate the bounding box
+            int width = right - left + 1;
+            int height = bottom - top + 1;
+            var bounds = new Rectangle(left, top, width, height);
+
+            // Crop to the bounding box
+            img.Mutate(x => x.Crop(bounds));
+
+            using var resizedImg = img.Clone(context => context.Resize(resizeWidth, resizeHeight));
+
+            var pixelData = new byte[resizeWidth * resizeHeight];
+
+            int index = 0;
+            for (int y = 0; y < resizedImg.Height; y++)
+            {
+                for (int x = 0; x < resizedImg.Width; x++)
+                {
+                    var pixel = resizedImg[x, y];
+                    byte grayValue = (byte)(0.299 * pixel.R + 0.587 * pixel.G + 0.114 * pixel.B);
+                    pixelData[index++] = grayValue;
+                }
+            }
+
+            return pixelData;
+        }
     }
 }

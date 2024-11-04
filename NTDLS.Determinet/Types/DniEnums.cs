@@ -9,14 +9,13 @@
     }
 
     [Serializable]
-    public enum ActivationType
+    public enum DniActivationType
     {
         None,
         /// <summary>
         /// Default simple passthrough activation function.
         /// </summary>
         Identity,
-        BinaryChaos,
         Linear,
         /// <summary>
         /// Rectified linear unit activation function.

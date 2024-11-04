@@ -1,5 +1,4 @@
 ﻿using NTDLS.Determinet.ActivationFunctions.Interfaces;
-using NTDLS.Determinet.Types;
 
 namespace NTDLS.Determinet.ActivationFunctions
 {
@@ -9,12 +8,8 @@ namespace NTDLS.Determinet.ActivationFunctions
     /// easier to train and often had better predictive performance.
     /// </summary>
     [Serializable]
-    public class DniTanhFunction : DniIActivationFunction
+    public class DniTanhFunction : IDniActivationFunction
     {
-        public DniTanhFunction(DniNamedFunctionParameters param)
-        {
-        }
-
         public double Activation(double x)
         {
             return (double)Math.Tanh(x);

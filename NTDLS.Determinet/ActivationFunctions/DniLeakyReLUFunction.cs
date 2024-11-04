@@ -1,5 +1,4 @@
 ﻿using NTDLS.Determinet.ActivationFunctions.Interfaces;
-using NTDLS.Determinet.Types;
 
 namespace NTDLS.Determinet.ActivationFunctions
 {
@@ -10,12 +9,8 @@ namespace NTDLS.Determinet.ActivationFunctions
     /// efficient and simpler than Leaky ReLU, which makes it more suitable for shallow architectures1.
     /// </summary>
     [Serializable]
-    public class DniLeakyReLUFunction : DniIActivationFunction
+    public class DniLeakyReLUFunction : IDniActivationFunction
     {
-        public DniLeakyReLUFunction(DniNamedFunctionParameters param)
-        {
-        }
-
         public double Activation(double x)
         {
             return (0 >= x) ? 0.01f * x : x;
