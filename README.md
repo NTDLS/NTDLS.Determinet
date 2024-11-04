@@ -1,6 +1,6 @@
 # Determinet
 
-📦 Be sure to check out the NuGet pacakge: https://www.nuget.org/packages/NTDLS.Determinet
+📦 Be sure to check out the NuGet package: https://www.nuget.org/packages/NTDLS.Determinet
 
 Determinet is versatile multilayer perception neural network designed for extendibility and genetic-style mutations to allow forward propagation of the network variants.
 
@@ -112,40 +112,40 @@ static void TrainAndSaveModel(string fileName)
                 AIOutputs.AdjustSpeed
         });
 
-    //Train the model with some input scenarios. Look at TrainingScenerio() and TrainingDecision()
+    //Train the model with some input scenarios. Look at TrainingScenario() and TrainingDecision()
     //  to see that these ominous looking numbers are actualy just named inouts. Its pretty simple really.
     for (int epoch = 0; epoch < 5000; epoch++)
     {
         //Very close to observed object, slow way down and get away
-        Network.BackPropagate(TrainingScenerio(0, 0), TrainingDecision(1, 0));
-        Network.BackPropagate(TrainingScenerio(0, -1), TrainingDecision(1, 0));
-        Network.BackPropagate(TrainingScenerio(0, 1), TrainingDecision(1, 0));
-        Network.BackPropagate(TrainingScenerio(0, 0.5), TrainingDecision(1, 0));
-        Network.BackPropagate(TrainingScenerio(0, -0.5), TrainingDecision(1, 0));
+        Network.BackPropagate(TrainingScenario(0, 0), TrainingDecision(1, 0));
+        Network.BackPropagate(TrainingScenario(0, -1), TrainingDecision(1, 0));
+        Network.BackPropagate(TrainingScenario(0, 1), TrainingDecision(1, 0));
+        Network.BackPropagate(TrainingScenario(0, 0.5), TrainingDecision(1, 0));
+        Network.BackPropagate(TrainingScenario(0, -0.5), TrainingDecision(1, 0));
 
         //Pretty close to observed object, slow down a bit and get away.
-        Network.BackPropagate(TrainingScenerio(0.25, 0), TrainingDecision(1, 0.2));
-        Network.BackPropagate(TrainingScenerio(0.25, -1), TrainingDecision(1, 0.2));
-        Network.BackPropagate(TrainingScenerio(0.25, 1), TrainingDecision(1, 0.2));
-        Network.BackPropagate(TrainingScenerio(0.25, 0.5), TrainingDecision(1, 0.2));
-        Network.BackPropagate(TrainingScenerio(0.25, -0.5), TrainingDecision(1, 0.2));
+        Network.BackPropagate(TrainingScenario(0.25, 0), TrainingDecision(1, 0.2));
+        Network.BackPropagate(TrainingScenario(0.25, -1), TrainingDecision(1, 0.2));
+        Network.BackPropagate(TrainingScenario(0.25, 1), TrainingDecision(1, 0.2));
+        Network.BackPropagate(TrainingScenario(0.25, 0.5), TrainingDecision(1, 0.2));
+        Network.BackPropagate(TrainingScenario(0.25, -0.5), TrainingDecision(1, 0.2));
 
         //Very far from observed object, speed up and maintain heading.
-        Network.BackPropagate(TrainingScenerio(1, 0), TrainingDecision(0, 1));
-        Network.BackPropagate(TrainingScenerio(1, -1), TrainingDecision(0, 1));
-        Network.BackPropagate(TrainingScenerio(1, 1), TrainingDecision(0, 1));
-        Network.BackPropagate(TrainingScenerio(1, 0.5), TrainingDecision(0, 1));
-        Network.BackPropagate(TrainingScenerio(1, -0.5), TrainingDecision(0, 1));
+        Network.BackPropagate(TrainingScenario(1, 0), TrainingDecision(0, 1));
+        Network.BackPropagate(TrainingScenario(1, -1), TrainingDecision(0, 1));
+        Network.BackPropagate(TrainingScenario(1, 1), TrainingDecision(0, 1));
+        Network.BackPropagate(TrainingScenario(1, 0.5), TrainingDecision(0, 1));
+        Network.BackPropagate(TrainingScenario(1, -0.5), TrainingDecision(0, 1));
 
         //Pretty far from observed object, maintain heading but don't change speed.
-        Network.BackPropagate(TrainingScenerio(0.75, 0), TrainingDecision(0, 0.5));
-        Network.BackPropagate(TrainingScenerio(0.75, -1), TrainingDecision(0, 0.5));
-        Network.BackPropagate(TrainingScenerio(0.75, 1), TrainingDecision(0, 0.5));
-        Network.BackPropagate(TrainingScenerio(0.75, 0.5), TrainingDecision(0, 0.5));
-        Network.BackPropagate(TrainingScenerio(0.75, -0.5), TrainingDecision(0, 0.5));
+        Network.BackPropagate(TrainingScenario(0.75, 0), TrainingDecision(0, 0.5));
+        Network.BackPropagate(TrainingScenario(0.75, -1), TrainingDecision(0, 0.5));
+        Network.BackPropagate(TrainingScenario(0.75, 1), TrainingDecision(0, 0.5));
+        Network.BackPropagate(TrainingScenario(0.75, 0.5), TrainingDecision(0, 0.5));
+        Network.BackPropagate(TrainingScenario(0.75, -0.5), TrainingDecision(0, 0.5));
     }
 
-    static DniNamedInterfaceParameters TrainingScenerio(double distanceFromObstacle, double angleToObstacleInDecimalDegrees)
+    static DniNamedInterfaceParameters TrainingScenario(double distanceFromObstacle, double angleToObstacleInDecimalDegrees)
     {
         var param = new DniNamedInterfaceParameters();
         param.Set(AIInputs.DistanceFromObstacle, distanceFromObstacle);
@@ -168,4 +168,4 @@ static void TrainAndSaveModel(string fileName)
 ```
 
 ## License
-[Apache-2.0](https://choosealicense.com/licenses/apache-2.0/)
+[MIT]https://choosealicense.com/licenses/mit/)
