@@ -8,19 +8,23 @@ namespace NTDLS.Determinet.ActivationFunctions
     ///  because a model that uses it is easier to train and often achieves better performance.
     /// </summary>
     [Serializable]
-    public class DniReLUFunction : IDniActivationFunction
+    public class DniReLUFunction : IDniActivationSingleValue
     {
         public double Activation(double x)
         {
             if (x > 0)
+            {
                 return x;
+            }
             return 0;
         }
 
-        public double Derivative(double x)
+        public double Derivative(double x, double[] trueLabel)
         {
             if (x > 0)
+            {
                 return 1;
+            }
             return 0;
         }
     }

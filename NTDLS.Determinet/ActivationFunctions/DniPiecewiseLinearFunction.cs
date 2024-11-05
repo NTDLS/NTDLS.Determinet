@@ -8,7 +8,7 @@ namespace NTDLS.Determinet.ActivationFunctions
     /// Function that combines a linear segment for certain input range with a Leaky ReLU-like behavior for values outside that range. 
     /// </summary>
     [Serializable]
-    public class DniPiecewiseLinearFunction : IDniActivationFunction
+    public class DniPiecewiseLinearFunction : IDniActivationSingleValue
     {
         /// <summary>
         /// Linear slope value.
@@ -47,7 +47,7 @@ namespace NTDLS.Determinet.ActivationFunctions
                 return x;
         }
 
-        public double Derivative(double x)
+        public double Derivative(double x, double[] trueLabel)
         {
             if (x <= Range.Min)
                 return Alpha;

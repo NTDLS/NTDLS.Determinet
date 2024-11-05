@@ -9,14 +9,14 @@ namespace NTDLS.Determinet.ActivationFunctions
     /// through 0.5 to 1.0. For a long time, through the early 1990s, it was the default activation used on neural networks.
     /// </summary>
     [Serializable]
-    public class DniSigmoidFunction : IDniActivationFunction
+    public class DniSigmoidFunction : IDniActivationSingleValue
     {
         public double Activation(double x)
         {
             return 1.0 / (1.0 + Math.Exp(-x));
         }
 
-        public double Derivative(double x)
+        public double Derivative(double x, double[] trueLabel)
         {
             return x * (1 - x);
         }

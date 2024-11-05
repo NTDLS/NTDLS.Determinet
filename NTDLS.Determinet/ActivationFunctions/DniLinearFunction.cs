@@ -8,7 +8,7 @@ namespace NTDLS.Determinet.ActivationFunctions
     /// Linear bounded activation function.
     /// </summary>
     [Serializable]
-    public class DniLinearFunction : IDniActivationFunction
+    public class DniLinearFunction : IDniActivationSingleValue
     {
         // linear slope value
         private double alpha;
@@ -49,7 +49,7 @@ namespace NTDLS.Determinet.ActivationFunctions
             return y;
         }
 
-        public double Derivative(double x)
+        public double Derivative(double x, double[] trueLabel)
         {
             double y = alpha * x;
 

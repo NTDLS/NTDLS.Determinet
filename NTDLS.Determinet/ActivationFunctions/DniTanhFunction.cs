@@ -8,14 +8,14 @@ namespace NTDLS.Determinet.ActivationFunctions
     /// easier to train and often had better predictive performance.
     /// </summary>
     [Serializable]
-    public class DniTanhFunction : IDniActivationFunction
+    public class DniTanhFunction : IDniActivationSingleValue
     {
         public double Activation(double x)
         {
             return (double)Math.Tanh(x);
         }
 
-        public double Derivative(double x)
+        public double Derivative(double x, double[] trueLabel)
         {
             return 1 - (x * x);
         }

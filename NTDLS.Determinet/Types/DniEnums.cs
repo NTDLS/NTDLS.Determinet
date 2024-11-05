@@ -1,7 +1,7 @@
 ﻿namespace NTDLS.Determinet.Types
 {
     [Serializable]
-    public enum LayerType
+    public enum DniLayerType
     {
         Input,
         Intermediate,
