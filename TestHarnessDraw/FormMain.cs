@@ -22,7 +22,7 @@ namespace TestHarnessDraw
 
             timer.Tick += Timer_Tick;
 
-            var debugModelFile = @"C:\NTDLS\NTDLS.Determinet\TestHarness\bin\Debug\net8.0\trained.json";
+            var debugModelFile = @"C:\NTDLS\NTDLS.Determinet\TestHarness\bin\Release\net8.0\trained.json";
             if (File.Exists(debugModelFile))
             {
                 _dni = DniNeuralNetwork.LoadFromFile(debugModelFile);

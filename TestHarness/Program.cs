@@ -21,6 +21,8 @@ namespace TestHarness
             DniNeuralNetwork dni;
             if (File.Exists(trainedModelFilename))
             {
+                dni = TrainAndSave(trainedModelFilename);
+
                 dni = DniNeuralNetwork.LoadFromFile(trainedModelFilename)
                     ?? throw new Exception("Failed to load the network from file.");
             }
@@ -107,7 +109,7 @@ namespace TestHarness
             configuration.AddInputLayer(_imageWidth * _imageHeight);
             configuration.AddIntermediateLayer(280, DniActivationType.LeakyReLU);
 
-            /*//Example of adding parameters for an activation function:
+            /*//Example of adding parameters for a layer activation function:
             var piecewiseLinearParam = new DniNamedFunctionParameters();
             piecewiseLinearParam.Set("alpha", 1);
             piecewiseLinearParam.Set("range", new DniRange(-10, 10));
@@ -120,18 +122,46 @@ namespace TestHarness
 
             var trainingModels = LoadTrainingModels(@"C:\Users\ntdls\Desktop\digit");
 
-            double loss = double.PositiveInfinity;
+            double initialLearningRate = 0.01;
+            double learningRate = initialLearningRate;
+            int patience = 2; // Number of epochs to wait before reducing learning rate
+            double decayFactor = 0.5; // Factor to reduce learning rate
+            int trainingEpochs = 100;
+            double previousEpochLoss = double.MaxValue;
+            int patienceCounter = 0;
+            double epochLoss = double.PositiveInfinity;
 
-            for (int epoch = 0; epoch < 25; epoch++)
+            for (int epoch = 0; epoch < trainingEpochs; epoch++)
             {
-                Console.WriteLine($"Epoch {epoch:n0}, Loss: {loss:n4}.");
+                Console.WriteLine($"Epoch {epoch + 1}/{trainingEpochs} - Loss: {epochLoss:n4} - Learning Rate: {learningRate:n4}");
+
+                dni.LearningRate = learningRate;
 
                 TrainingModel? model;
-                loss = 0;
+                epochLoss = 0;
                 while ((model = GetRandomTrainingModel(trainingModels, epoch)) != null)
                 {
-                    loss += dni.Train(model.Input, model.Expectation);
+                    epochLoss += dni.Train(model.Input, model.Expectation);
                 }
+
+                epochLoss /= trainingModels.Count;
+
+                if (epochLoss > previousEpochLoss) // Check if loss has increased.
+                {
+                    if (patienceCounter++ >= patience)
+                    {
+                        // Reduce learning rate if loss has not improved for 'patience' epochs
+                        learningRate *= decayFactor;
+                        patienceCounter = 0; // Reset patience counter after reducing learning rate
+                        Console.WriteLine($"Reduced learning rate to {learningRate:n4}.");
+                    }
+                }
+                else
+                {
+                    patienceCounter = 0; // Reset counter if loss decreases
+                }
+
+                previousEpochLoss = epochLoss;
             }
 
             Console.WriteLine();
