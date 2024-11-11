@@ -35,15 +35,29 @@ namespace NTDLS.Determinet.ActivationFunctions
             _range = param.Get("Range", new DniRange(-1, +1));
         }
 
-        public double Activation(double x)
+        public double[] Activation(double[] nodes)
         {
-            double y = _alpha * x;
+            var result = new List<double>();
 
-            if (y > _range.Max)
-                return _range.Max;
-            else if (y < _range.Min)
-                return _range.Min;
-            return y;
+            foreach (var node in nodes)
+            {
+                double y = _alpha * node;
+
+                if (y > _range.Max)
+                {
+                    result.Add(_range.Max);
+                }
+                else if (y < _range.Min)
+                {
+                    result.Add(_range.Min);
+                }
+                else
+                {
+                    result.Add(y);
+                }
+            }
+
+            return result.ToArray();
         }
 
         public double Derivative(double x)
@@ -51,7 +65,9 @@ namespace NTDLS.Determinet.ActivationFunctions
             double y = _alpha * x;
 
             if (y <= _range.Min || y >= _range.Max)
+            {
                 return 0;
+            }
             return _alpha;
         }
     }

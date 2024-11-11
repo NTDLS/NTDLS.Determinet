@@ -1,25 +1,29 @@
 ﻿using Newtonsoft.Json;
+using NTDLS.Determinet.ActivationFunctions;
+using NTDLS.Determinet.Types;
 
 namespace NTDLS.Determinet
 {
     public class DniNeuralNetwork
     {
-        private readonly double learningRate;
-
-        public DniStateOfBeing State { get; private set; } = new();
+        public double LearningRate { get; set; }
+        internal DniStateOfBeing State { get; private set; } = new();
 
         public DniNeuralNetwork(DniConfiguration configuration)
         {
-            learningRate = configuration.LearningRate;
+            LearningRate = configuration.LearningRate;
 
-            // Define layer sizes including input, hidden, and output layers.
-            State.Layers.Add(new DniLayer(configuration.InputNodes));
+            //Add input layer.
+            State.Layers.Add(new DniLayer(DniLayerType.Input, configuration.InputNodes));
 
+            //Add hidden layer(s).
             foreach (var layerConfig in configuration.IntermediateLayers)
             {
-                State.Layers.Add(new DniLayer(layerConfig.Nodes, layerConfig.ActivationType));
+                State.Layers.Add(new DniLayer(DniLayerType.Intermediate, layerConfig.Nodes, layerConfig.ActivationType));
             }
-            State.Layers.Add(new DniLayer(configuration.OutputLayer.Nodes, configuration.OutputLayer.ActivationType));
+
+            //Add output layer.
+            State.Layers.Add(new DniLayer(DniLayerType.Output, configuration.OutputLayer.Nodes, configuration.OutputLayer.ActivationType));
 
             InitializeWeightsAndBiases();
         }
@@ -67,29 +71,10 @@ namespace NTDLS.Determinet
             for (int i = 1; i < State.Layers.Count; i++)
             {
                 State.Layers[i].Activations = ActivateLayer(State.Layers[i - 1].Activations, State.Synapses[i - 1].Weights, State.Synapses[i - 1].Biases);
-
-                // Apply softmax only to the output layer
-                if (i == State.Layers.Count - 1)
-                    State.Layers[i].Activations = Softmax(State.Layers[i].Activations);
-                else
-                    State.Layers[i].Activations = State.Layers[i].Activations.Select(Sigmoid).ToArray(); // Sigmoid for hidden layers
+                State.Layers[i].Activations = State.Layers[i].Activate();
             }
 
             return State.Layers.Last().Activations; // Return the output layer
-        }
-
-        // Sigmoid activation function
-        private static double Sigmoid(double x) => 1.0 / (1.0 + Math.Exp(-x));
-
-        // Sigmoid derivative function
-        private static double SigmoidDerivative(double x) => x * (1.0 - x);
-
-        // Softmax activation for the output layer
-        private static double[] Softmax(double[] x)
-        {
-            double max = x.Max();
-            double scale = x.Sum(v => Math.Exp(v - max));
-            return x.Select(v => Math.Exp(v - max) / scale).ToArray();
         }
 
         // Activates a layer
@@ -107,33 +92,60 @@ namespace NTDLS.Determinet
             return output;
         }
 
-        // Cross-entropy loss derivative
+        /// <summary>
+        /// Cross-entropy loss derivative
+        /// </summary>
         private static double[] CrossEntropyLossGradient(double[] predicted, double[] actual)
         {
-            double[] gradient = new double[predicted.Length];
+            var gradient = new double[predicted.Length];
             for (int i = 0; i < predicted.Length; i++)
+            {
                 gradient[i] = predicted[i] - actual[i];
+            }
             return gradient;
         }
 
-        // Backpropagation for updating weights and biases
-        public void Backpropagate(double[] inputs, double[] actualOutput)
+        /// <summary>
+        /// Backpropagation for updating weights and biases
+        /// </summary>
+        private void Backpropagate(double[] inputs, double[] actualOutput)
         {
             Forward(inputs);
 
-            double[] outputError = CrossEntropyLossGradient(State.Layers.Last().Activations, actualOutput);
-            List<double[]> errors = new List<double[]> { outputError };
+            List<double[]>? errors;
+
+            if (State.Layers.Last().ActivationFunction is DniSoftMaxFunction)
+            {
+                var outputError = CrossEntropyLossGradient(State.Layers.Last().Activations, actualOutput);
+                errors = new List<double[]> { outputError };
+            }
+            else
+            {
+                // Calculate the output error for the output layer, adjusting for the activation function
+                var outputError = new double[State.Layers.Last().Activations.Length];
+                for (int i = 0; i < outputError.Length; i++)
+                {
+                    var predicted = State.Layers.Last().Activations[i];
+                    var target = actualOutput[i];
+
+                    // Cross-entropy error combined with output activation derivative
+                    outputError[i] = (predicted - target) * State.Layers.Last().ActivateDerivative(i);
+                }
+                errors = new List<double[]> { outputError };
+            }
 
             // Calculate errors for each layer back through all hidden layers
             for (int i = State.Layers.Count - 2; i > 0; i--)
             {
-                double[] layerError = new double[State.Layers[i].NodeCount];
+                var layerError = new double[State.Layers[i].NodeCount];
                 for (int j = 0; j < State.Layers[i].NodeCount; j++)
                 {
                     layerError[j] = 0.0;
                     for (int k = 0; k < State.Layers[i + 1].NodeCount; k++)
+                    {
                         layerError[j] += errors.First()[k] * State.Synapses[i].Weights[j, k];
-                    layerError[j] *= SigmoidDerivative(State.Layers[i].Activations[j]); // Use SigmoidDerivative here
+                    }
+                    layerError[j] *= State.Layers[i].ActivateDerivative(j);
                 }
                 errors.Insert(0, layerError);
             }
@@ -145,27 +157,24 @@ namespace NTDLS.Determinet
                 {
                     for (int k = 0; k < State.Synapses[i].Weights.GetLength(1); k++)
                     {
-                        State.Synapses[i].Weights[j, k] -= learningRate * errors[i][k] * State.Layers[i].Activations[j];
+                        State.Synapses[i].Weights[j, k] -= LearningRate * errors[i][k] * State.Layers[i].Activations[j];
                     }
                 }
 
                 for (int j = 0; j < State.Synapses[i].Biases.Length; j++)
                 {
-                    State.Synapses[i].Biases[j] -= learningRate * errors[i][j];
+                    State.Synapses[i].Biases[j] -= LearningRate * errors[i][j];
                 }
             }
         }
 
-        /// <summary>
-        /// Training method for multiple epochs.
-        /// </summary>
         public double Train(double[] inputs, double[] outputs)
         {
             // Forward pass to get the prediction
-            double[] predictions = Forward(inputs);
+            var predictions = Forward(inputs);
 
             // Calculate and accumulate the loss
-            double loss = -Math.Log(predictions[Array.IndexOf(outputs, 1.0)]);
+            var loss = -Math.Log(predictions[Array.IndexOf(outputs, 1.0)]);
 
             // Perform backpropagation to update weights
             Backpropagate(inputs, outputs);
@@ -183,7 +192,7 @@ namespace NTDLS.Determinet
             for (int epoch = 0; epoch < epochs; epoch++)
             {
                 // Forward pass to get the prediction
-                double[] predictions = Forward(inputs);
+                var predictions = Forward(inputs);
 
                 // Calculate and accumulate the loss
                 loss = -Math.Log(predictions[Array.IndexOf(outputs, 1.0)]);

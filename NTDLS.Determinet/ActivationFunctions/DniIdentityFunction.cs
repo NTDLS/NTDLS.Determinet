@@ -14,7 +14,7 @@ namespace NTDLS.Determinet.ActivationFunctions
         {
         }
 
-        public double Activation(double x) => x;
+        public double[] Activation(double[] nodes) => nodes;
         public double Derivative(double x) => 1;
     }
 }

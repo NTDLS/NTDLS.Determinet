@@ -8,16 +8,18 @@ namespace NTDLS.Determinet.ActivationFunctions
     /// similarly, values much smaller than 0.0 are snapped to 0.0. The shape of the function for all possible inputs is an S-shape from zero up
     /// through 0.5 to 1.0. For a long time, through the early 1990s, it was the default activation used on neural networks.
     /// </summary>
-    public class DniSigmoidFunction : IDniActivationFunction
+    public class DniSoftMaxFunction : IDniActivationFunction
     {
         public double[] Activation(double[] nodes)
         {
-            return nodes.Select(o => 1.0 / (1.0 + Math.Exp(-o))).ToArray();
+            double max = nodes.Max();
+            double scale = nodes.Sum(v => Math.Exp(v - max));
+            return nodes.Select(v => Math.Exp(v - max) / scale).ToArray();
         }
 
         public double Derivative(double x)
         {
-            return x * (1 - x);
+            throw new NotImplementedException("SoftMax uses dedicated cross-entropy loss derivative.");
         }
     }
 }

@@ -26,6 +26,7 @@
         /// Tanh (logistic function) activation function.
         /// </summary>
         Tanh,
-        LeakyReLU //Leaky-Rectified linear unit
+        LeakyReLU, //Leaky-Rectified linear unit
+        SoftMax
     }
 }

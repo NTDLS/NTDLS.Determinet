@@ -23,7 +23,6 @@ namespace NTDLS.Determinet.ActivationFunctions
 
         public DniPiecewiseLinearFunction(DniNamedFunctionParameters? param)
         {
-
             if (param == null)
             {
                 Alpha = 0.1;
@@ -36,14 +35,21 @@ namespace NTDLS.Determinet.ActivationFunctions
             }
         }
 
-        public double Activation(double x)
+        public double[] Activation(double[] nodes)
         {
-            if (x <= Range.Min)
-                return Alpha * x;
-            else if (x >= Range.Max)
-                return Alpha * x;
-            else
-                return x;
+            var result = new List<double>();
+
+            foreach (var node in nodes)
+            {
+                if (node <= Range.Min)
+                    result.Add(Alpha * node);
+                else if (node >= Range.Max)
+                    result.Add(Alpha * node);
+                else
+                    result.Add(node);
+            }
+
+            return result.ToArray();
         }
 
         public double Derivative(double x)

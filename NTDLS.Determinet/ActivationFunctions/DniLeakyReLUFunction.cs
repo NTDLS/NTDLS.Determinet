@@ -10,9 +10,9 @@ namespace NTDLS.Determinet.ActivationFunctions
     /// </summary>
     public class DniLeakyReLUFunction : IDniActivationFunction
     {
-        public double Activation(double x)
+        public double[] Activation(double[] nodes)
         {
-            return (0 >= x) ? 0.01f * x : x;
+            return nodes.Select(o=> (0 >= o) ? 0.01f * o : o).ToArray();
         }
 
         public double Derivative(double x)

@@ -9,13 +9,9 @@ namespace NTDLS.Determinet.ActivationFunctions
     /// </summary>
     public class DniReLUFunction : IDniActivationFunction
     {
-        public double Activation(double x)
+        public double[] Activation(double[] nodes)
         {
-            if (x > 0)
-            {
-                return x;
-            }
-            return 0;
+            return nodes.Select(o => o > 0 ? o : 0).ToArray();
         }
 
         public double Derivative(double x)

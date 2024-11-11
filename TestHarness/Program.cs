@@ -106,7 +106,7 @@ namespace TestHarness
             var configuration = new DniConfiguration();
             configuration.AddInputLayer(_imageWidth * _imageHeight);
             configuration.AddIntermediateLayer(280, DniActivationType.Sigmoid);
-            configuration.AddOutputLayer(_outputNodes, DniActivationType.Sigmoid);
+            configuration.AddOutputLayer(_outputNodes, DniActivationType.SoftMax);
 
             var dni = new DniNeuralNetwork(configuration);
 

@@ -9,9 +9,9 @@ namespace NTDLS.Determinet.ActivationFunctions
     /// </summary>
     public class DniTanhFunction : IDniActivationFunction
     {
-        public double Activation(double x)
+        public double[] Activation(double[] nodes)
         {
-            return (double)Math.Tanh(x);
+            return nodes.Select(o => (double)Math.Tanh(o)).ToArray();
         }
 
         public double Derivative(double x)

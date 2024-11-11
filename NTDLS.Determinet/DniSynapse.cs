@@ -1,6 +1,6 @@
 ﻿namespace NTDLS.Determinet
 {
-    public class DniSynapse
+    internal class DniSynapse
     {
         public double[,] Weights { get; set; }
         public double[] Biases { get; set; }
