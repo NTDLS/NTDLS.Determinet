@@ -14,16 +14,16 @@ namespace NTDLS.Determinet
             LearningRate = configuration.LearningRate;
 
             //Add input layer.
-            State.Layers.Add(new DniLayer(DniLayerType.Input, configuration.InputNodes));
+            State.Layers.Add(new DniLayer(DniLayerType.Input, configuration.InputNodes, new()));
 
             //Add hidden layer(s).
             foreach (var layerConfig in configuration.IntermediateLayers)
             {
-                State.Layers.Add(new DniLayer(DniLayerType.Intermediate, layerConfig.Nodes, layerConfig.ActivationType));
+                State.Layers.Add(new DniLayer(DniLayerType.Intermediate, layerConfig.Nodes, layerConfig.ActivationType, layerConfig.ActivationParameters));
             }
 
             //Add output layer.
-            State.Layers.Add(new DniLayer(DniLayerType.Output, configuration.OutputLayer.Nodes, configuration.OutputLayer.ActivationType));
+            State.Layers.Add(new DniLayer(DniLayerType.Output, configuration.OutputLayer.Nodes, configuration.OutputLayer.ActivationType, configuration.OutputLayer.ActivationParameters));
 
             InitializeWeightsAndBiases();
         }

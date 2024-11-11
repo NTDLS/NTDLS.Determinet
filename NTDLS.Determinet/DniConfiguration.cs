@@ -20,18 +20,18 @@ namespace NTDLS.Determinet
             InputNodes = nodes;
         }
 
-        public void AddIntermediateLayer(int nodes, DniActivationType activationType)
+        public void AddIntermediateLayer(int nodes, DniActivationType activationType, DniNamedFunctionParameters? activationParameters = null)
         {
-            IntermediateLayers.Add(new(DniLayerType.Intermediate, nodes, activationType));
+            IntermediateLayers.Add(new(DniLayerType.Intermediate, nodes, activationType, activationParameters ?? new()));
         }
 
-        public void AddOutputLayer(int nodes, DniActivationType activationType)
+        public void AddOutputLayer(int nodes, DniActivationType activationType, DniNamedFunctionParameters? activationParameters = null)
         {
             if (_outputLayer != null)
             {
                 throw new Exception("Output layer is already defined.");
             }
-            _outputLayer = new(DniLayerType.Output, nodes, activationType);
+            _outputLayer = new(DniLayerType.Output, nodes, activationType, activationParameters ?? new());
         }
     }
 }

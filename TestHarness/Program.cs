@@ -106,6 +106,14 @@ namespace TestHarness
             var configuration = new DniConfiguration();
             configuration.AddInputLayer(_imageWidth * _imageHeight);
             configuration.AddIntermediateLayer(280, DniActivationType.LeakyReLU);
+
+            /*//Example of adding parameters for an activation function:
+            var piecewiseLinearParam = new DniNamedFunctionParameters();
+            piecewiseLinearParam.Set("alpha", 1);
+            piecewiseLinearParam.Set("range", new DniRange(-10, 10));
+            configuration.AddIntermediateLayer(280, DniActivationType.PiecewiseLinear, piecewiseLinearParam);
+            */
+
             configuration.AddOutputLayer(_outputNodes, DniActivationType.SoftMax);
 
             var dni = new DniNeuralNetwork(configuration);

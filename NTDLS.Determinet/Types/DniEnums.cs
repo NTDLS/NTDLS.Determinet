@@ -16,6 +16,7 @@
         /// Default simple passthrough activation function.
         /// </summary>
         Identity,
+        PiecewiseLinear,
         Linear,
         /// <summary>
         /// Rectified linear unit activation function.

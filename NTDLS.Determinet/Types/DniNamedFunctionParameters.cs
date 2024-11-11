@@ -1,37 +1,47 @@
-﻿using Newtonsoft.Json;
-
-namespace NTDLS.Determinet.Types
+﻿namespace NTDLS.Determinet.Types
 {
     /// <summary>
     /// Used to pass optional parameters to activation functions.
     /// </summary>
-    [Serializable]
     public class DniNamedFunctionParameters
     {
-        [JsonProperty]
-        private readonly Dictionary<string, object> _dictonary = new();
+        public readonly Dictionary<string, object> Values = new();
 
-        public void Set(object key, object value)
+        public void Set(object key, double value)
         {
             string stringKey = (key?.ToString() ?? string.Empty).ToLower();
 
-            if (_dictonary.ContainsKey(stringKey))
+            if (Values.ContainsKey(stringKey))
             {
-                _dictonary[stringKey] = value;
+                Values[stringKey] = value;
             }
             else
             {
-                _dictonary.Add(stringKey, value);
+                Values.Add(stringKey, value);
+            }
+        }
+
+        public void Set(object key, DniRange value)
+        {
+            string stringKey = (key?.ToString() ?? string.Empty).ToLower();
+
+            if (Values.ContainsKey(stringKey))
+            {
+                Values[stringKey] = value;
+            }
+            else
+            {
+                Values.Add(stringKey, value);
             }
         }
 
         public object[] ToArray()
         {
-            var values = new object[_dictonary.Count];
-            var keys = _dictonary.Keys.ToList();
+            var values = new object[Values.Count];
+            var keys = Values.Keys.ToList();
             for (int i = 0; i < keys.Count; i++)
             {
-                values[i] = _dictonary[keys[i]];
+                values[i] = Values[keys[i]];
             }
             return values;
         }
@@ -40,30 +50,30 @@ namespace NTDLS.Determinet.Types
         {
             string stringKey = (key?.ToString() ?? string.Empty).ToLower();
 
-            return (T)_dictonary[stringKey];
+            return (T)Values[stringKey];
         }
 
         public T Get<T>(object key, T defaultValue)
         {
             string stringKey = (key?.ToString() ?? string.Empty).ToLower();
 
-            if (_dictonary.ContainsKey(stringKey))
+            if (Values.ContainsKey(stringKey))
             {
-                return (T)_dictonary[stringKey];
+                return (T)Values[stringKey];
             }
             return defaultValue;
         }
 
         public KeyValuePair<string, object> Get(int index)
         {
-            return _dictonary.ElementAt(index);
+            return Values.ElementAt(index);
         }
 
         public object Get(object key, object defaultValue)
         {
             string stringKey = (key?.ToString() ?? string.Empty).ToLower();
 
-            if (_dictonary.TryGetValue(stringKey, out object? value))
+            if (Values.TryGetValue(stringKey, out object? value))
             {
                 return value;
             }
