@@ -16,7 +16,7 @@ namespace TestHarness
         {
             var trainedModelFilename = "trained.json";
 
-            //File.Delete(trainedModelFilename);
+            File.Delete(trainedModelFilename);
 
             DniNeuralNetwork dni;
             if (File.Exists(trainedModelFilename))
