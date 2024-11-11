@@ -112,7 +112,7 @@ namespace TestHarness
 
             var trainingModels = LoadTrainingModels(@"C:\Users\ntdls\Desktop\digit");
 
-            for (int epoch = 0; epoch < 10; epoch++)
+            for (int epoch = 0; epoch < 4; epoch++)
             {
                 Console.WriteLine($"Epoch {epoch:n0}.");
 

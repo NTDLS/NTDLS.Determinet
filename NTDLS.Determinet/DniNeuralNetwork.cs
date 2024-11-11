@@ -1,4 +1,5 @@
 ﻿using Newtonsoft.Json;
+using NTDLS.Determinet.ActivationFunctions.Interfaces;
 
 namespace NTDLS.Determinet
 {
@@ -6,27 +7,38 @@ namespace NTDLS.Determinet
     {
         private readonly double learningRate;
 
-        [JsonProperty]
-        private List<int> _layerSizes = new();
+        public class DniLayer
+        {
+            public int NodeCount { get; set; }
+
+            public DniLayer(int nodeCount)
+            {
+                NodeCount = nodeCount;                
+            }
+        }
+
+        public List<DniLayer> Layers { get; set; } = new();
+
         [JsonProperty]
         private List<double[]> _activations = new();
         [JsonProperty]
         private List<double[,]> weights = new();
         [JsonProperty]
         private List<double[]> biases = new();
+        private List<IDniActivationFunction> _activationFunctions = new();
 
         public DniNeuralNetwork(DniConfiguration configuration)
         {
             learningRate = configuration.LearningRate;
 
             // Define layer sizes including input, hidden, and output layers.
-            _layerSizes.Add(configuration.InputNodes);
+            Layers.Add(new DniLayer(configuration.InputNodes));
 
             foreach (var layer in configuration.IntermediateLayers)
             {
-                _layerSizes.Add(layer.Nodes);
+                Layers.Add(new DniLayer(layer.Nodes));
             }
-            _layerSizes.Add(configuration.OutputLayer.Nodes);
+            Layers.Add(new DniLayer(configuration.OutputLayer.Nodes));
 
             InitializeLayers();
             InitializeWeightsAndBiases();
@@ -42,8 +54,10 @@ namespace NTDLS.Determinet
         private void InitializeLayers()
         {
             _activations = new List<double[]>();
-            foreach (int size in _layerSizes)
-                _activations.Add(new double[size]);
+            foreach (var layer in Layers)
+            {
+                _activations.Add(new double[layer.NodeCount]);
+            }
         }
 
         /// <summary>
@@ -56,10 +70,10 @@ namespace NTDLS.Determinet
             weights = new List<double[,]>();
             biases = new List<double[]>();
 
-            for (int i = 0; i < _layerSizes.Count - 1; i++)
+            for (int i = 0; i < Layers.Count - 1; i++)
             {
-                int currentSize = _layerSizes[i];
-                int nextSize = _layerSizes[i + 1];
+                int currentSize = Layers[i].NodeCount;
+                int nextSize = Layers[i + 1].NodeCount;
 
                 double[,] layerWeights = new double[currentSize, nextSize];
                 double[] layerBiases = new double[nextSize];
@@ -144,11 +158,11 @@ namespace NTDLS.Determinet
             // Calculate errors for each layer back through all hidden layers
             for (int i = _activations.Count - 2; i > 0; i--)
             {
-                double[] layerError = new double[_layerSizes[i]];
-                for (int j = 0; j < _layerSizes[i]; j++)
+                double[] layerError = new double[Layers[i].NodeCount];
+                for (int j = 0; j < Layers[i].NodeCount; j++)
                 {
                     layerError[j] = 0.0;
-                    for (int k = 0; k < _layerSizes[i + 1]; k++)
+                    for (int k = 0; k < Layers[i + 1].NodeCount; k++)
                         layerError[j] += errors.First()[k] * weights[i][j, k];
                     layerError[j] *= SigmoidDerivative(_activations[i][j]); // Use SigmoidDerivative here
                 }
