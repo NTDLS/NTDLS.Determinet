@@ -8,9 +8,10 @@ namespace NTDLS.Determinet
     internal class DniLayer
     {
         public DniLayerType LayerType { get; set; }
-        public double[] Activations { get; internal set; }
-        public int NodeCount { get; internal set; }
-        public DniActivationType ActivationType { get; internal set; }
+        [JsonIgnore]
+        public double[] Activations { get; set; }
+        public int NodeCount { get; set; }
+        public DniActivationType ActivationType { get; set; }
 
         [JsonIgnore]
         public IDniActivationFunction? ActivationFunction { get; internal set; }

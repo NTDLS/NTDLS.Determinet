@@ -30,6 +30,7 @@ namespace NTDLS.Determinet
 
         public DniNeuralNetwork()
         {
+            //Only used for deserialization.
         }
 
         /// <summary>
@@ -63,7 +64,9 @@ namespace NTDLS.Determinet
             }
         }
 
-        // Forward pass through the network
+        /// <summary>
+        /// Forward pass through the network
+        /// </summary>
         public double[] Forward(double[] inputs)
         {
             State.Layers[0].Activations = inputs;
@@ -77,7 +80,9 @@ namespace NTDLS.Determinet
             return State.Layers.Last().Activations; // Return the output layer
         }
 
-        // Activates a layer
+        /// <summary>
+        /// Activates a layer
+        /// </summary>
         private static double[] ActivateLayer(double[] inputs, double[,] weights, double[] biases)
         {
             int layerSize = biases.Length;
@@ -87,13 +92,15 @@ namespace NTDLS.Determinet
             {
                 output[j] = biases[j];
                 for (int i = 0; i < inputs.Length; i++)
+                {
                     output[j] += inputs[i] * weights[i, j];
+                }
             }
             return output;
         }
 
         /// <summary>
-        /// Cross-entropy loss derivative
+        /// Cross-entropy loss derivative, used for SoftMax output activation function.
         /// </summary>
         private static double[] CrossEntropyLossGradient(double[] predicted, double[] actual)
         {
@@ -168,6 +175,9 @@ namespace NTDLS.Determinet
             }
         }
 
+        /// <summary>
+        /// Training function for single epoch.
+        /// </summary>
         public double Train(double[] inputs, double[] outputs)
         {
             // Forward pass to get the prediction
@@ -183,7 +193,7 @@ namespace NTDLS.Determinet
         }
 
         /// <summary>
-        /// Training method for multiple epochs.
+        /// Training function for multiple epochs.
         /// </summary>
         public double Train(double[] inputs, double[] outputs, int epochs)
         {

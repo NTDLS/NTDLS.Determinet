@@ -1,4 +1,5 @@
 using NTDLS.Determinet;
+using System.Windows.Forms;
 
 namespace TestHarnessDraw
 {
@@ -20,6 +21,12 @@ namespace TestHarnessDraw
             };
 
             timer.Tick += Timer_Tick;
+
+            var debugModelFile = @"C:\NTDLS\NTDLS.Determinet\TestHarness\bin\Debug\net8.0\trained.json";
+            if (File.Exists(debugModelFile))
+            {
+                _dni = DniNeuralNetwork.LoadFromFile(debugModelFile);
+            }
         }
 
         private void Timer_Tick(object? sender, EventArgs e)

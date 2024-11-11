@@ -105,21 +105,24 @@ namespace TestHarness
         {
             var configuration = new DniConfiguration();
             configuration.AddInputLayer(_imageWidth * _imageHeight);
-            configuration.AddIntermediateLayer(280, DniActivationType.Sigmoid);
+            configuration.AddIntermediateLayer(280, DniActivationType.LeakyReLU);
             configuration.AddOutputLayer(_outputNodes, DniActivationType.SoftMax);
 
             var dni = new DniNeuralNetwork(configuration);
 
             var trainingModels = LoadTrainingModels(@"C:\Users\ntdls\Desktop\digit");
 
-            for (int epoch = 0; epoch < 4; epoch++)
+            double loss = double.PositiveInfinity;
+
+            for (int epoch = 0; epoch < 25; epoch++)
             {
-                Console.WriteLine($"Epoch {epoch:n0}.");
+                Console.WriteLine($"Epoch {epoch:n0}, Loss: {loss:n4}.");
 
                 TrainingModel? model;
+                loss = 0;
                 while ((model = GetRandomTrainingModel(trainingModels, epoch)) != null)
                 {
-                    dni.Train(model.Input, model.Expectation);
+                    loss += dni.Train(model.Input, model.Expectation);
                 }
             }
 
