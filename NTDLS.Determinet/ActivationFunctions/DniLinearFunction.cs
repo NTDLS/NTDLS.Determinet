@@ -7,55 +7,52 @@ namespace NTDLS.Determinet.ActivationFunctions
     /// <summary>
     /// Linear bounded activation function.
     /// </summary>
-    [Serializable]
-    public class DniLinearFunction : IDniActivationSingleValue
+    public class DniLinearFunction : IDniActivationFunction
     {
         // linear slope value
-        private double alpha;
+        private double _alpha;
 
         // function output range
-        private DniRange range;
+        private DniRange _range;
 
         [JsonProperty]
         public double Alpha //Linear slope value.
         {
-            get { return alpha; }
-            set { alpha = value; }
+            get { return _alpha; }
         }
 
         [JsonProperty]
         public DniRange Range //Function output range.
         {
-            get { return range; }
-            set { range = value; }
+            get { return _range; }
         }
 
         public DniLinearFunction(DniNamedFunctionParameters? param)
         {
             if (param == null) throw new ArgumentNullException(nameof(param));
 
-            Alpha = param.Get<double>("Alpha", 1);
-            Range = param.Get("Range", new DniRange(-1, +1));
+            _alpha = param.Get<double>("Alpha", 1);
+            _range = param.Get("Range", new DniRange(-1, +1));
         }
 
         public double Activation(double x)
         {
-            double y = alpha * x;
+            double y = _alpha * x;
 
-            if (y > range.Max)
-                return range.Max;
-            else if (y < range.Min)
-                return range.Min;
+            if (y > _range.Max)
+                return _range.Max;
+            else if (y < _range.Min)
+                return _range.Min;
             return y;
         }
 
-        public double Derivative(double x, double[] trueLabel)
+        public double Derivative(double x)
         {
-            double y = alpha * x;
+            double y = _alpha * x;
 
-            if (y <= range.Min || y >= range.Max)
+            if (y <= _range.Min || y >= _range.Max)
                 return 0;
-            return alpha;
+            return _alpha;
         }
     }
 }

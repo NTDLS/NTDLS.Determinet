@@ -8,15 +8,14 @@ namespace NTDLS.Determinet.ActivationFunctions
     /// similarly, values much smaller than 0.0 are snapped to 0.0. The shape of the function for all possible inputs is an S-shape from zero up
     /// through 0.5 to 1.0. For a long time, through the early 1990s, it was the default activation used on neural networks.
     /// </summary>
-    [Serializable]
-    public class DniSigmoidFunction : IDniActivationSingleValue
+    public class DniSigmoidFunction : IDniActivationFunction
     {
         public double Activation(double x)
         {
             return 1.0 / (1.0 + Math.Exp(-x));
         }
 
-        public double Derivative(double x, double[] trueLabel)
+        public double Derivative(double x)
         {
             return x * (1 - x);
         }

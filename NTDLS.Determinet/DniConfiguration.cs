@@ -18,7 +18,7 @@ namespace NTDLS.Determinet
             InputNodes = nodes;
         }
 
-        public void AddHiddenLayer(int nodes, DniActivationType activationType)
+        public void AddIntermediateLayer(int nodes, DniActivationType activationType)
         {
             Layers.Add(new(DniLayerType.Intermediate, nodes, activationType));
         }

@@ -8,14 +8,13 @@ namespace NTDLS.Determinet.ActivationFunctions
     /// function is often used as a default activation function for a layer of a neural network. When used as an activation
     /// function, an identity function simply passes the input through the layer unchanged.
     /// </summary>
-    [Serializable]
-    public class DniIdentityFunction : IDniActivationSingleValue
+    public class DniIdentityFunction : IDniActivationFunction
     {
         public DniIdentityFunction(DniNamedFunctionParameters? param)
         {
         }
 
         public double Activation(double x) => x;
-        public double Derivative(double x, double[] trueLabel) => 1;
+        public double Derivative(double x) => 1;
     }
 }

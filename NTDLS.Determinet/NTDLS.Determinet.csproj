@@ -6,7 +6,7 @@
     <GeneratePackageOnBuild>False</GeneratePackageOnBuild>
     <Title>NTDLS.Determinet</Title>
     <Nullable>enable</Nullable>
-    <GenerateDocumentationFile>True</GenerateDocumentationFile>
+    <GenerateDocumentationFile>False</GenerateDocumentationFile>
     <Copyright>Copyright © 2023 NetworkDLS</Copyright>
     <Description>Determinet is versatile multilayer perception neural network designed for extendibility and genetic-style mutations to allow forward propagation of the network variants.</Description>
     <PackageProjectUrl>https://github.com/NTDLS/NTDLS.Determinet</PackageProjectUrl>

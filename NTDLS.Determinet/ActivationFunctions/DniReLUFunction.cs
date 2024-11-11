@@ -7,8 +7,7 @@ namespace NTDLS.Determinet.ActivationFunctions
     ///  if it is positive, otherwise, it will output zero. It has become the default activation function for many types of neural networks
     ///  because a model that uses it is easier to train and often achieves better performance.
     /// </summary>
-    [Serializable]
-    public class DniReLUFunction : IDniActivationSingleValue
+    public class DniReLUFunction : IDniActivationFunction
     {
         public double Activation(double x)
         {
@@ -19,7 +18,7 @@ namespace NTDLS.Determinet.ActivationFunctions
             return 0;
         }
 
-        public double Derivative(double x, double[] trueLabel)
+        public double Derivative(double x)
         {
             if (x > 0)
             {

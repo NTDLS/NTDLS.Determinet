@@ -74,7 +74,7 @@ namespace NTDLS.Determinet
             return results;
         }
 
-        public void Train(double[] inputs, double[] trueLabel, double learningRate = 0.1)
+        public void Train(double[] inputs, double[] expectedOutputs, double learningRate = 0.1)
         {
             // Feedforward and store activations and weighted sums
             double[] activations = inputs;
@@ -87,12 +87,12 @@ namespace NTDLS.Determinet
             }
 
             // Backpropagation
-            double[] error = _layers[^1].CalculateOutputLayerError(activationsList[^1], trueLabel);
+            double[] error = _layers[^1].CalculateOutputLayerError(activationsList[^1], expectedOutputs);
 
             // Adjust weights and biases for each layer in reverse
             for (int i = _layers.Count - 1; i >= 0; i--)
             {
-                error = _layers[i].Backpropagate(error, activationsList[i], learningRate, trueLabel);
+                error = _layers[i].Backpropagate(error, activationsList[i], learningRate);
             }
         }
 

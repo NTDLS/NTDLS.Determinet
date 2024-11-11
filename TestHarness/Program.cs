@@ -105,19 +105,10 @@ namespace TestHarness
         {
             var configuration = new DniConfiguration();
             configuration.AddInputLayer(_imageWidth * _imageHeight);
-            configuration.AddHiddenLayer(280, DniActivationType.Sigmoid);
-            configuration.AddOutputLayer(_outputNodes, DniActivationType.Sigmoid);
+            configuration.AddIntermediateLayer(280, DniActivationType.LeakyReLU);
+            configuration.AddOutputLayer(_outputNodes, DniActivationType.LeakyReLU);
 
             var dni = new DniNeuralNetwork(configuration);
-
-            //Add input layer.
-            //dni.Layers.AddInput(ActivationType.LeakyReLU, imageWidth * imageHeight);
-
-            //Add a intermediate "hidden" layer. You can add more if you like.
-            //dni.Layers.AddIntermediate(ActivationType.LeakyReLU, 128);
-
-            //Add the output layer.
-            //dni.Layers.AddOutput(outputNodes); //One node per digit.
 
             var trainingModels = LoadTrainingModels(@"C:\Users\ntdls\Desktop\digit");
 

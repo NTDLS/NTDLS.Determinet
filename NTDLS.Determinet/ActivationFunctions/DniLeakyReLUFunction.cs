@@ -8,15 +8,14 @@ namespace NTDLS.Determinet.ActivationFunctions
     /// important information and thus perform better than ReLU in scenarios where the data has a lot of noise or outliers1. ReLU is computationally
     /// efficient and simpler than Leaky ReLU, which makes it more suitable for shallow architectures.
     /// </summary>
-    [Serializable]
-    public class DniLeakyReLUFunction : IDniActivationSingleValue
+    public class DniLeakyReLUFunction : IDniActivationFunction
     {
         public double Activation(double x)
         {
             return (0 >= x) ? 0.01f * x : x;
         }
 
-        public double Derivative(double x, double[] trueLabel)
+        public double Derivative(double x)
         {
             return (0 >= x) ? 0.01f : 1;
         }

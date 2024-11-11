@@ -108,25 +108,17 @@ namespace NTDLS.Determinet
             return outputs;
         }
 
-        public double[] CalculateOutputLayerError(double[] outputActivations, double[] trueLabel)
+        public double[] CalculateOutputLayerError(double[] outputActivations, double[] expectedOutputs)
         {
-            if (_activationFunction is IDniActivationSingleValue activationSingleValue)
+            double[] outputErrors = new double[_outputSize];
+            for (int i = 0; i < _outputSize; i++)
             {
-                double[] outputErrors = new double[_outputSize];
-                for (int i = 0; i < _outputSize; i++)
-                {
-                    outputErrors[i] = (trueLabel[i] - outputActivations[i]) * activationSingleValue.Derivative(outputActivations[i], trueLabel);
-                }
-                return outputErrors;
+                outputErrors[i] = (expectedOutputs[i] - outputActivations[i]) * _activationFunction.Derivative(outputActivations[i]);
             }
-            else if (_activationFunction is IDniActivationMultiValue activationMultiValue)
-            {
-                return activationMultiValue.Derivative(outputActivations, trueLabel);
-            }
-            throw new NotImplementedException("Activation type is not implemented.");
+            return outputErrors;
         }
 
-        public double[] Backpropagate(double[] errors, double[] previousActivations, double learningRate, double[] trueLabel)
+        public double[] Backpropagate(double[] errors, double[] previousActivations, double learningRate)
         {
             double[] previousLayerErrors = new double[_inputSize];
 
@@ -141,21 +133,10 @@ namespace NTDLS.Determinet
                 }
             }
 
-            // Apply the appropriate derivative function
-            if (_activationFunction is IDniActivationSingleValue activationSingleValue)
+            // Apply derivative to previous layer errors
+            for (int i = 0; i < _inputSize; i++)
             {
-                for (int i = 0; i < _inputSize; i++)
-                {
-                    previousLayerErrors[i] *= activationSingleValue.Derivative(previousActivations[i], trueLabel);
-                }
-            }
-            else if (_activationFunction is IDniActivationMultiValue activationMultiValue)
-            {
-                var derivatives = activationMultiValue.Derivative(previousActivations, trueLabel);
-                for (int i = 0; i < _inputSize; i++)
-                {
-                    previousLayerErrors[i] *= derivatives[i];
-                }
+                previousLayerErrors[i] *= _activationFunction.Derivative(previousActivations[i]);
             }
 
             return previousLayerErrors;
