@@ -1,6 +1,4 @@
 ﻿using Newtonsoft.Json;
-using NTDLS.Determinet.ActivationFunctions.Interfaces;
-using System.Reflection.Emit;
 
 namespace NTDLS.Determinet
 {
@@ -8,36 +6,20 @@ namespace NTDLS.Determinet
     {
         private readonly double learningRate;
 
-        public class DniLayer
-        {
-            public double[] Activations { get; set; }
-            public int NodeCount { get; set; }
-
-            public DniLayer(int nodeCount)
-            {
-                NodeCount = nodeCount;
-                Activations = new double[nodeCount];
-            }
-        }
-
-        public List<DniLayer> Layers { get; set; } = new();
-
-        private List<double[,]> weights = new();
-        private List<double[]> biases = new();
-        private List<IDniActivationFunction> _activationFunctions = new();
+        public DniStateOfBeing State { get; private set; } = new();
 
         public DniNeuralNetwork(DniConfiguration configuration)
         {
             learningRate = configuration.LearningRate;
 
             // Define layer sizes including input, hidden, and output layers.
-            Layers.Add(new DniLayer(configuration.InputNodes));
+            State.Layers.Add(new DniLayer(configuration.InputNodes));
 
-            foreach (var layer in configuration.IntermediateLayers)
+            foreach (var layerConfig in configuration.IntermediateLayers)
             {
-                Layers.Add(new DniLayer(layer.Nodes));
+                State.Layers.Add(new DniLayer(layerConfig.Nodes, layerConfig.ActivationType));
             }
-            Layers.Add(new DniLayer(configuration.OutputLayer.Nodes));
+            State.Layers.Add(new DniLayer(configuration.OutputLayer.Nodes, configuration.OutputLayer.ActivationType));
 
             InitializeWeightsAndBiases();
         }
@@ -51,48 +33,49 @@ namespace NTDLS.Determinet
         /// </summary>
         private void InitializeWeightsAndBiases()
         {
-            Random rand = new Random();
-
-            weights = new List<double[,]>();
-            biases = new List<double[]>();
-
-            for (int i = 0; i < Layers.Count - 1; i++)
+            for (int i = 0; i < State.Layers.Count - 1; i++)
             {
-                int currentSize = Layers[i].NodeCount;
-                int nextSize = Layers[i + 1].NodeCount;
+                int currentSize = State.Layers[i].NodeCount;
+                int nextSize = State.Layers[i + 1].NodeCount;
 
-                double[,] layerWeights = new double[currentSize, nextSize];
-                double[] layerBiases = new double[nextSize];
+                var layerWeights = new double[currentSize, nextSize];
+                var layerBiases = new double[nextSize];
 
                 // Initialize weights and biases with small random values
                 for (int j = 0; j < currentSize; j++)
+                {
                     for (int k = 0; k < nextSize; k++)
-                        layerWeights[j, k] = rand.NextDouble() - 0.5;
-                for (int j = 0; j < nextSize; j++)
-                    layerBiases[j] = rand.NextDouble() - 0.5;
+                    {
+                        layerWeights[j, k] = DniUtility.Random.NextDouble() - 0.5;
+                    }
+                }
 
-                weights.Add(layerWeights);
-                biases.Add(layerBiases);
+                for (int j = 0; j < nextSize; j++)
+                {
+                    layerBiases[j] = DniUtility.Random.NextDouble() - 0.5;
+                }
+
+                State.Synapses.Add(new DniSynapse(layerWeights, layerBiases));
             }
         }
 
         // Forward pass through the network
         public double[] Forward(double[] inputs)
         {
-            Layers[0].Activations = inputs;
+            State.Layers[0].Activations = inputs;
 
-            for (int i = 1; i < Layers.Count; i++)
+            for (int i = 1; i < State.Layers.Count; i++)
             {
-                Layers[i].Activations = ActivateLayer(Layers[i - 1].Activations, weights[i - 1], biases[i - 1]);
+                State.Layers[i].Activations = ActivateLayer(State.Layers[i - 1].Activations, State.Synapses[i - 1].Weights, State.Synapses[i - 1].Biases);
 
                 // Apply softmax only to the output layer
-                if (i == Layers.Count - 1)
-                    Layers[i].Activations = Softmax(Layers[i].Activations);
+                if (i == State.Layers.Count - 1)
+                    State.Layers[i].Activations = Softmax(State.Layers[i].Activations);
                 else
-                    Layers[i].Activations = Layers[i].Activations.Select(Sigmoid).ToArray(); // Sigmoid for hidden layers
+                    State.Layers[i].Activations = State.Layers[i].Activations.Select(Sigmoid).ToArray(); // Sigmoid for hidden layers
             }
 
-            return Layers.Last().Activations; // Return the output layer
+            return State.Layers.Last().Activations; // Return the output layer
         }
 
         // Sigmoid activation function
@@ -138,32 +121,38 @@ namespace NTDLS.Determinet
         {
             Forward(inputs);
 
-            double[] outputError = CrossEntropyLossGradient(Layers.Last().Activations, actualOutput);
+            double[] outputError = CrossEntropyLossGradient(State.Layers.Last().Activations, actualOutput);
             List<double[]> errors = new List<double[]> { outputError };
 
             // Calculate errors for each layer back through all hidden layers
-            for (int i = Layers.Count - 2; i > 0; i--)
+            for (int i = State.Layers.Count - 2; i > 0; i--)
             {
-                double[] layerError = new double[Layers[i].NodeCount];
-                for (int j = 0; j < Layers[i].NodeCount; j++)
+                double[] layerError = new double[State.Layers[i].NodeCount];
+                for (int j = 0; j < State.Layers[i].NodeCount; j++)
                 {
                     layerError[j] = 0.0;
-                    for (int k = 0; k < Layers[i + 1].NodeCount; k++)
-                        layerError[j] += errors.First()[k] * weights[i][j, k];
-                    layerError[j] *= SigmoidDerivative(Layers[i].Activations[j]); // Use SigmoidDerivative here
+                    for (int k = 0; k < State.Layers[i + 1].NodeCount; k++)
+                        layerError[j] += errors.First()[k] * State.Synapses[i].Weights[j, k];
+                    layerError[j] *= SigmoidDerivative(State.Layers[i].Activations[j]); // Use SigmoidDerivative here
                 }
                 errors.Insert(0, layerError);
             }
 
             // Update weights and biases with gradient descent
-            for (int i = 0; i < weights.Count; i++)
+            for (int i = 0; i < State.Synapses.Count; i++)
             {
-                for (int j = 0; j < weights[i].GetLength(0); j++)
-                    for (int k = 0; k < weights[i].GetLength(1); k++)
-                        weights[i][j, k] -= learningRate * errors[i][k] * Layers[i].Activations[j];
+                for (int j = 0; j < State.Synapses[i].Weights.GetLength(0); j++)
+                {
+                    for (int k = 0; k < State.Synapses[i].Weights.GetLength(1); k++)
+                    {
+                        State.Synapses[i].Weights[j, k] -= learningRate * errors[i][k] * State.Layers[i].Activations[j];
+                    }
+                }
 
-                for (int j = 0; j < biases[i].Length; j++)
-                    biases[i][j] -= learningRate * errors[i][j];
+                for (int j = 0; j < State.Synapses[i].Biases.Length; j++)
+                {
+                    State.Synapses[i].Biases[j] -= learningRate * errors[i][j];
+                }
             }
         }
 
@@ -209,7 +198,7 @@ namespace NTDLS.Determinet
 
         public void SaveToFile(string fileName)
         {
-            var jsonText = JsonConvert.SerializeObject(this, Formatting.Indented);
+            var jsonText = JsonConvert.SerializeObject(State, Formatting.Indented);
             File.WriteAllText(fileName, jsonText);
         }
 
@@ -217,12 +206,18 @@ namespace NTDLS.Determinet
         {
             var jsonText = File.ReadAllText(fileName);
 
-            var dni = JsonConvert.DeserializeObject<DniNeuralNetwork>(jsonText)
+            var state = JsonConvert.DeserializeObject<DniStateOfBeing>(jsonText)
                 ?? throw new Exception("Failed to deserialize the network.");
 
-            //InstantiateActivationFunction();
+            foreach (var layer in state.Layers)
+            {
+                layer.InstantiateActivationFunction();
+            }
 
-            return dni;
+            return new DniNeuralNetwork()
+            {
+                State = state
+            };
         }
     }
 }
