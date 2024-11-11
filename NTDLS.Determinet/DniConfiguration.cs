@@ -4,10 +4,12 @@ namespace NTDLS.Determinet
 {
     public class DniConfiguration
     {
-        public int InputNodes { get; private set; }
-        public DniConfigurationLayer? OutputLayer { get; private set; }
+        private DniConfigurationLayer? _outputLayer;
 
-        public List<DniConfigurationLayer> Layers { get; set; } = new();
+        public double LearningRate { get; set; } = 0.01;
+        public int InputNodes { get; private set; }
+        public DniConfigurationLayer OutputLayer => _outputLayer ?? throw new Exception("Output layer is not defined.");
+        public List<DniConfigurationLayer> IntermediateLayers { get; set; } = new();
 
         public void AddInputLayer(int nodes)
         {
@@ -20,16 +22,16 @@ namespace NTDLS.Determinet
 
         public void AddIntermediateLayer(int nodes, DniActivationType activationType)
         {
-            Layers.Add(new(DniLayerType.Intermediate, nodes, activationType));
+            IntermediateLayers.Add(new(DniLayerType.Intermediate, nodes, activationType));
         }
 
         public void AddOutputLayer(int nodes, DniActivationType activationType)
         {
-            if (OutputLayer != null)
+            if (_outputLayer != null)
             {
                 throw new Exception("Output layer is already defined.");
             }
-            OutputLayer = new(DniLayerType.Output, nodes, activationType);
+            _outputLayer = new(DniLayerType.Output, nodes, activationType);
         }
     }
 }

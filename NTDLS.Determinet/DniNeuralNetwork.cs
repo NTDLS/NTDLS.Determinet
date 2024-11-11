@@ -1,119 +1,228 @@
 ﻿using Newtonsoft.Json;
-using NTDLS.Determinet.Types;
 
 namespace NTDLS.Determinet
 {
     public class DniNeuralNetwork
     {
+        private readonly double learningRate;
+
         [JsonProperty]
-        private readonly List<DniLayer> _layers = new();
+        private List<int> _layerSizes = new();
+        [JsonProperty]
+        private List<double[]> _layers = new();
+        [JsonProperty]
+        private List<double[,]> weights = new();
+        [JsonProperty]
+        private List<double[]> biases = new();
 
         public DniNeuralNetwork(DniConfiguration configuration)
         {
-            if (configuration.InputNodes < 1)
+            learningRate = configuration.LearningRate;
+
+            // Define layer sizes including input, hidden, and output layers.
+            _layerSizes.Add(configuration.InputNodes);
+
+            foreach (var layer in configuration.IntermediateLayers)
             {
-                throw new Exception("Input layer is not defined.");
+                _layerSizes.Add(layer.Nodes);
             }
+            _layerSizes.Add(configuration.OutputLayer.Nodes);
 
-            if (configuration.Layers.Count < 1)
+            InitializeLayers();
+            InitializeWeightsAndBiases();
+        }
+
+        public DniNeuralNetwork()
+        {
+        }
+
+        /// <summary>
+        /// Initialize each layer based on layer sizes.
+        /// </summary>
+        private void InitializeLayers()
+        {
+            _layers = new List<double[]>();
+            foreach (int size in _layerSizes)
+                _layers.Add(new double[size]);
+        }
+
+        /// <summary>
+        /// Initialize weights and biases for each layer.
+        /// </summary>
+        private void InitializeWeightsAndBiases()
+        {
+            Random rand = new Random();
+
+            weights = new List<double[,]>();
+            biases = new List<double[]>();
+
+            for (int i = 0; i < _layerSizes.Count - 1; i++)
             {
-                throw new Exception("Configuration must contain at least one hidden layer.");
-            }
+                int currentSize = _layerSizes[i];
+                int nextSize = _layerSizes[i + 1];
 
-            if (configuration.OutputLayer == null || (configuration.OutputLayer?.Nodes ?? 0) < 1)
-            {
-                throw new Exception("Output layer is not defined.");
-            }
+                double[,] layerWeights = new double[currentSize, nextSize];
+                double[] layerBiases = new double[nextSize];
 
-            //For simplicity, we just add the output layer to the layers.
-            configuration.Layers.Add(configuration.OutputLayer ?? throw new Exception("Output layer is not defined."));
+                // Initialize weights and biases with small random values
+                for (int j = 0; j < currentSize; j++)
+                    for (int k = 0; k < nextSize; k++)
+                        layerWeights[j, k] = rand.NextDouble() - 0.5;
+                for (int j = 0; j < nextSize; j++)
+                    layerBiases[j] = rand.NextDouble() - 0.5;
 
-            _layers = new List<DniLayer>
-            {
-                new DniLayer(DniLayerType.Input, configuration.InputNodes, configuration.Layers[0].Nodes, configuration.Layers[0].ActivationType)
-            };
-
-            for (int i = 1; i < configuration.Layers.Count; i++)
-            {
-                _layers.Add(new DniLayer(
-                    configuration.Layers[i].LayerType,
-                    configuration.Layers[i - 1].Nodes,
-                    configuration.Layers[i].Nodes,
-                    configuration.Layers[i].ActivationType));
+                weights.Add(layerWeights);
+                biases.Add(layerBiases);
             }
         }
 
-        private DniNeuralNetwork(List<DniLayer> layers)
+        // Forward pass through the network
+        public double[] Forward(double[] inputs)
         {
-            _layers = layers;
-        }
+            _layers[0] = inputs;
 
-        public double[] FeedForward(double[] inputs)
-        {
-            double[] activations = inputs;
-
-            foreach (var layer in _layers)
+            for (int i = 1; i < _layers.Count; i++)
             {
-                activations = layer.FeedForward(activations);
+                _layers[i] = ActivateLayer(_layers[i - 1], weights[i - 1], biases[i - 1]);
+
+                // Apply softmax only to the output layer
+                if (i == _layers.Count - 1)
+                    _layers[i] = Softmax(_layers[i]);
+                else
+                    _layers[i] = _layers[i].Select(Sigmoid).ToArray(); // Sigmoid for hidden layers
             }
 
-            return activations; // Final output layer activations
+            return _layers.Last(); // Return the output layer
         }
 
-        public double[] FeedForward(double[] inputs, out double highestActivationNode)
+        // Sigmoid activation function
+        private static double Sigmoid(double x) => 1.0 / (1.0 + Math.Exp(-x));
+
+        // Sigmoid derivative function
+        private static double SigmoidDerivative(double x) => x * (1.0 - x);
+
+        // Softmax activation for the output layer
+        private static double[] Softmax(double[] x)
         {
-            var results = FeedForward(inputs);
-            highestActivationNode = DniUtility.GetIndexOfMaxValue(results, out _);
-            return results;
+            double max = x.Max();
+            double scale = x.Sum(v => Math.Exp(v - max));
+            return x.Select(v => Math.Exp(v - max) / scale).ToArray();
         }
 
-        public double[] FeedForward(double[] inputs, out int highestActivationNode, out double confidence)
+        // Activates a layer
+        private static double[] ActivateLayer(double[] inputs, double[,] weights, double[] biases)
         {
-            var results = FeedForward(inputs);
-            highestActivationNode = DniUtility.GetIndexOfMaxValue(results, out confidence);
-            return results;
-        }
+            int layerSize = biases.Length;
+            double[] output = new double[layerSize];
 
-        public void Train(double[] inputs, double[] expectedOutputs, double learningRate = 0.1)
-        {
-            // Feedforward and store activations and weighted sums
-            double[] activations = inputs;
-            var activationsList = new List<double[]> { activations };
-
-            foreach (var layer in _layers)
+            for (int j = 0; j < layerSize; j++)
             {
-                activations = layer.FeedForward(activations);
-                activationsList.Add(activations);
+                output[j] = biases[j];
+                for (int i = 0; i < inputs.Length; i++)
+                    output[j] += inputs[i] * weights[i, j];
+            }
+            return output;
+        }
+
+        // Cross-entropy loss derivative
+        private static double[] CrossEntropyLossGradient(double[] predicted, double[] actual)
+        {
+            double[] gradient = new double[predicted.Length];
+            for (int i = 0; i < predicted.Length; i++)
+                gradient[i] = predicted[i] - actual[i];
+            return gradient;
+        }
+
+        // Backpropagation for updating weights and biases
+        public void Backpropagate(double[] inputs, double[] actualOutput)
+        {
+            Forward(inputs);
+
+            double[] outputError = CrossEntropyLossGradient(_layers.Last(), actualOutput);
+            List<double[]> errors = new List<double[]> { outputError };
+
+            // Calculate errors for each layer back through all hidden layers
+            for (int i = _layers.Count - 2; i > 0; i--)
+            {
+                double[] layerError = new double[_layerSizes[i]];
+                for (int j = 0; j < _layerSizes[i]; j++)
+                {
+                    layerError[j] = 0.0;
+                    for (int k = 0; k < _layerSizes[i + 1]; k++)
+                        layerError[j] += errors.First()[k] * weights[i][j, k];
+                    layerError[j] *= SigmoidDerivative(_layers[i][j]); // Use SigmoidDerivative here
+                }
+                errors.Insert(0, layerError);
             }
 
-            // Backpropagation
-            double[] error = _layers[^1].CalculateOutputLayerError(activationsList[^1], expectedOutputs);
-
-            // Adjust weights and biases for each layer in reverse
-            for (int i = _layers.Count - 1; i >= 0; i--)
+            // Update weights and biases with gradient descent
+            for (int i = 0; i < weights.Count; i++)
             {
-                error = _layers[i].Backpropagate(error, activationsList[i], learningRate);
+                for (int j = 0; j < weights[i].GetLength(0); j++)
+                    for (int k = 0; k < weights[i].GetLength(1); k++)
+                        weights[i][j, k] -= learningRate * errors[i][k] * _layers[i][j];
+
+                for (int j = 0; j < biases[i].Length; j++)
+                    biases[i][j] -= learningRate * errors[i][j];
             }
+        }
+
+        /// <summary>
+        /// Training method for multiple epochs.
+        /// </summary>
+        public double Train(double[] inputs, double[] outputs)
+        {
+            // Forward pass to get the prediction
+            double[] predictions = Forward(inputs);
+
+            // Calculate and accumulate the loss
+            double loss = -Math.Log(predictions[Array.IndexOf(outputs, 1.0)]);
+
+            // Perform backpropagation to update weights
+            Backpropagate(inputs, outputs);
+
+            return loss;
+        }
+
+        /// <summary>
+        /// Training method for multiple epochs.
+        /// </summary>
+        public double Train(double[] inputs, double[] outputs, int epochs)
+        {
+            double loss = 0.0;
+
+            for (int epoch = 0; epoch < epochs; epoch++)
+            {
+                // Forward pass to get the prediction
+                double[] predictions = Forward(inputs);
+
+                // Calculate and accumulate the loss
+                loss = -Math.Log(predictions[Array.IndexOf(outputs, 1.0)]);
+
+                // Perform backpropagation to update weights
+                Backpropagate(inputs, outputs);
+            }
+
+            // Return the final loss after all epochs
+            return loss;
         }
 
         public void SaveToFile(string fileName)
         {
-            var jsonText = JsonConvert.SerializeObject(_layers, Formatting.Indented);
+            var jsonText = JsonConvert.SerializeObject(this, Formatting.Indented);
             File.WriteAllText(fileName, jsonText);
         }
 
         public static DniNeuralNetwork LoadFromFile(string fileName)
         {
             var jsonText = File.ReadAllText(fileName);
-            var layers = JsonConvert.DeserializeObject<List<DniLayer>>(jsonText)
+
+            var dni = JsonConvert.DeserializeObject<DniNeuralNetwork>(jsonText)
                 ?? throw new Exception("Failed to deserialize the network.");
 
-            foreach (var layer in layers)
-            {
-                layer.InstantiateActivationFunction();
-            }
+            //InstantiateActivationFunction();
 
-            return new DniNeuralNetwork(layers);
+            return dni;
         }
     }
 }

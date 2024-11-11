@@ -16,7 +16,7 @@ namespace TestHarness
         {
             var trainedModelFilename = "trained.json";
 
-            File.Delete(trainedModelFilename);
+            //File.Delete(trainedModelFilename);
 
             DniNeuralNetwork dni;
             if (File.Exists(trainedModelFilename))
@@ -32,25 +32,25 @@ namespace TestHarness
             int outputNode = 0;
             double confidence = 0;
 
-            dni.FeedForward(GetImageGrayscaleBytes(@"C:\Users\ntdls\Desktop\digit\0\30_00010.png"), out outputNode, out confidence);
+            outputNode = DniUtility.GetIndexOfMaxValue(dni.Forward(GetImageGrayscaleBytes(@"C:\Users\ntdls\Desktop\digit\0\30_00010.png")), out confidence);
             Console.WriteLine($"Expected: 0: Result: {outputNode:n0}, confidence: {confidence:n4}");
-            dni.FeedForward(GetImageGrayscaleBytes(@"C:\Users\ntdls\Desktop\digit\1\31_00010.png"), out outputNode, out confidence);
+            outputNode = DniUtility.GetIndexOfMaxValue(dni.Forward(GetImageGrayscaleBytes(@"C:\Users\ntdls\Desktop\digit\1\31_00010.png")), out confidence);
             Console.WriteLine($"Expected: 1: Result: {outputNode:n0}, confidence: {confidence:n4}");
-            dni.FeedForward(GetImageGrayscaleBytes(@"C:\Users\ntdls\Desktop\digit\2\32_00010.png"), out outputNode, out confidence);
+            outputNode = DniUtility.GetIndexOfMaxValue(dni.Forward(GetImageGrayscaleBytes(@"C:\Users\ntdls\Desktop\digit\2\32_00010.png")), out confidence);
             Console.WriteLine($"Expected: 2: Result: {outputNode:n0}, confidence: {confidence:n4}");
-            dni.FeedForward(GetImageGrayscaleBytes(@"C:\Users\ntdls\Desktop\digit\3\33_00010.png"), out outputNode, out confidence);
+            outputNode = DniUtility.GetIndexOfMaxValue(dni.Forward(GetImageGrayscaleBytes(@"C:\Users\ntdls\Desktop\digit\3\33_00010.png")), out confidence);
             Console.WriteLine($"Expected: 3: Result: {outputNode:n0}, confidence: {confidence:n4}");
-            dni.FeedForward(GetImageGrayscaleBytes(@"C:\Users\ntdls\Desktop\digit\4\34_00010.png"), out outputNode, out confidence);
+            outputNode = DniUtility.GetIndexOfMaxValue(dni.Forward(GetImageGrayscaleBytes(@"C:\Users\ntdls\Desktop\digit\4\34_00010.png")), out confidence);
             Console.WriteLine($"Expected: 4: Result: {outputNode:n0}, confidence: {confidence:n4}");
-            dni.FeedForward(GetImageGrayscaleBytes(@"C:\Users\ntdls\Desktop\digit\5\35_00010.png"), out outputNode, out confidence);
+            outputNode = DniUtility.GetIndexOfMaxValue(dni.Forward(GetImageGrayscaleBytes(@"C:\Users\ntdls\Desktop\digit\5\35_00010.png")), out confidence);
             Console.WriteLine($"Expected: 5: Result: {outputNode:n0}, confidence: {confidence:n4}");
-            dni.FeedForward(GetImageGrayscaleBytes(@"C:\Users\ntdls\Desktop\digit\6\36_00010.png"), out outputNode, out confidence);
+            outputNode = DniUtility.GetIndexOfMaxValue(dni.Forward(GetImageGrayscaleBytes(@"C:\Users\ntdls\Desktop\digit\6\36_00010.png")), out confidence);
             Console.WriteLine($"Expected: 6: Result: {outputNode:n0}, confidence: {confidence:n4}");
-            dni.FeedForward(GetImageGrayscaleBytes(@"C:\Users\ntdls\Desktop\digit\7\37_00010.png"), out outputNode, out confidence);
+            outputNode = DniUtility.GetIndexOfMaxValue(dni.Forward(GetImageGrayscaleBytes(@"C:\Users\ntdls\Desktop\digit\7\37_00010.png")), out confidence);
             Console.WriteLine($"Expected: 7: Result: {outputNode:n0}, confidence: {confidence:n4}");
-            dni.FeedForward(GetImageGrayscaleBytes(@"C:\Users\ntdls\Desktop\digit\8\38_00010.png"), out outputNode, out confidence);
+            outputNode = DniUtility.GetIndexOfMaxValue(dni.Forward(GetImageGrayscaleBytes(@"C:\Users\ntdls\Desktop\digit\8\38_00010.png")), out confidence);
             Console.WriteLine($"Expected: 8: Result: {outputNode:n0}, confidence: {confidence:n4}");
-            dni.FeedForward(GetImageGrayscaleBytes(@"C:\Users\ntdls\Desktop\digit\9\39_00010.png"), out outputNode, out confidence);
+            outputNode = DniUtility.GetIndexOfMaxValue(dni.Forward(GetImageGrayscaleBytes(@"C:\Users\ntdls\Desktop\digit\9\39_00010.png")), out confidence);
             Console.WriteLine($"Expected: 9: Result: {outputNode:n0}, confidence: {confidence:n4}");
         }
 
