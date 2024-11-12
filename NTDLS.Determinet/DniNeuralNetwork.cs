@@ -218,7 +218,7 @@ namespace NTDLS.Determinet
         public void SaveToFile(string fileName)
         {
             var jsonText = JsonConvert.SerializeObject(State, Formatting.Indented);
-            File.WriteAllText(fileName, jsonText);
+            File.WriteAllBytes(fileName, DniUtility.Compress(jsonText));
         }
 
         public static DniNeuralNetwork LoadFromFile(string fileName)

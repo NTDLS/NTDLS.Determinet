@@ -44,6 +44,7 @@ namespace NTDLS.Determinet
         {
             //Only used for deserialization.
             Activations = Array.Empty<double>();
+            ActivationParameters = new();
         }
 
         public double[] Activate()
