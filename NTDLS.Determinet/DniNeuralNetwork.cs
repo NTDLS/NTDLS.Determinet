@@ -223,7 +223,7 @@ namespace NTDLS.Determinet
 
         public static DniNeuralNetwork LoadFromFile(string fileName)
         {
-            var jsonText = File.ReadAllText(fileName);
+            var jsonText = DniUtility.Decompress(File.ReadAllBytes(fileName));
 
             var state = JsonConvert.DeserializeObject<DniStateOfBeing>(jsonText)
                 ?? throw new Exception("Failed to deserialize the network.");
