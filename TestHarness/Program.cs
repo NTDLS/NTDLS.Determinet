@@ -124,7 +124,7 @@ namespace TestHarness
 
             double initialLearningRate = 0.006;
             double learningRate = initialLearningRate;
-            int patience = 2; // Number of epochs to wait before reducing learning rate
+            int patience = 3; // Number of epochs to wait before reducing learning rate
             double decayFactor = 0.5; // Factor to reduce learning rate
             int trainingEpochs = 5;
             double previousEpochLoss = double.MaxValue;
