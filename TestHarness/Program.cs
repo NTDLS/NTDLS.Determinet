@@ -123,10 +123,11 @@ namespace TestHarness
             var trainingModels = LoadTrainingModels(@"C:\Users\ntdls\Desktop\digit");
 
             double initialLearningRate = 0.006;
-            double learningRate = initialLearningRate;
-            int patience = 3; // Number of epochs to wait before reducing learning rate
+            int patience = 3; // Number of epochs to wait before reducing learning rate once cost starts increasing.
             double decayFactor = 0.5; // Factor to reduce learning rate
             int trainingEpochs = 5;
+
+            double learningRate = initialLearningRate;
             double previousEpochLoss = double.MaxValue;
             int patienceCounter = 0;
             double epochLoss = double.PositiveInfinity;

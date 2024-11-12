@@ -132,7 +132,7 @@ namespace NTDLS.Determinet
             var byteArray = Encoding.UTF8.GetBytes(data);
 
             using var compressedStream = new MemoryStream();
-            using (var gzipStream = new GZipStream(compressedStream, CompressionMode.Compress))
+            using (var gzipStream = new GZipStream(compressedStream, CompressionLevel.SmallestSize))
             {
                 gzipStream.Write(byteArray, 0, byteArray.Length);
             }
