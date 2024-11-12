@@ -22,7 +22,7 @@ namespace TestHarnessDraw
 
             timer.Tick += Timer_Tick;
 
-            var debugModelFile = @"C:\NTDLS\NTDLS.Determinet\TestHarness\bin\Release\net8.0\trained.json";
+            var debugModelFile = @"C:\NTDLS\NTDLS.Determinet\TestHarness\bin\Release\net8.0\trained.gz";
             if (File.Exists(debugModelFile))
             {
                 _dni = DniNeuralNetwork.LoadFromFile(debugModelFile);
@@ -111,7 +111,7 @@ namespace TestHarnessDraw
         private void ButtonLoadModel_Click(object sender, EventArgs e)
         {
             using var openFileDialog = new OpenFileDialog();
-            openFileDialog.Filter = "JSON Files (*.json)|*.json|All Files (*.*)|*.*";
+            openFileDialog.Filter = "Gz Files (*.gz)|*.gz|All Files (*.*)|*.*";
             openFileDialog.FilterIndex = 1;
             openFileDialog.Multiselect = false;
             openFileDialog.RestoreDirectory = true;

@@ -14,7 +14,7 @@ namespace TestHarness
 
         static void Main()
         {
-            var trainedModelFilename = "trained.json";
+            var trainedModelFilename = "trained.gz";
 
             //File.Delete(trainedModelFilename);
 
