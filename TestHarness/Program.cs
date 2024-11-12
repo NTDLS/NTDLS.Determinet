@@ -146,6 +146,8 @@ namespace TestHarness
                     epochLoss += dni.Train(imageBits, model.Expectation);
                 }
 
+                dni.SaveToFile(trainedModelFilename);
+
                 epochLoss /= trainingModels.Count;
 
                 if (epochLoss > previousEpochLoss) // Check if loss has increased.
@@ -166,44 +168,41 @@ namespace TestHarness
                 previousEpochLoss = epochLoss;
             }
 
-            Console.WriteLine();
-
-            dni.SaveToFile(trainedModelFilename);
-
             return dni;
         }
 
-
         static double[] GetImageGrayscaleBytes(string imagePath, int resizeWidth = 28, int resizeHeight = 28, int rotationAngleRange = 15)
         {
+            //Using images from: https://www.nist.gov/srd/nist-special-database-19
+
             var fileBytes = File.ReadAllBytes(imagePath);
 
-            // Load the image in RGB format and convert to RGBA
+            // Load the image in RGB format and convert to RGBA.
             using var img = Image.Load<Rgba32>(new MemoryStream(fileBytes));
 
-            // Determine larger canvas size (double the original size to prevent cropping during rotation)
+            // Determine larger canvas size (double the original size to prevent cropping during rotation).
             int largerSize = Math.Max(img.Width, img.Height) * 2;
 
-            // Create a new transparent image with the larger canvas size
+            // Create a new transparent image with the larger canvas size.
             using var canvas = new Image<Rgba32>(largerSize, largerSize, Color.Transparent);
 
-            // Center the original image on this new transparent canvas
+            // Center the original image on this new transparent canvas.
             int offsetX = (largerSize - img.Width) / 2;
             int offsetY = (largerSize - img.Height) / 2;
             canvas.Mutate(x => x.DrawImage(img, new Point(offsetX, offsetY), 1.0f));
 
-            // Apply random rotation to the whole canvas
+            // Apply random rotation to the whole canvas.
             int randomAngle = DniUtility.Random.Next(-rotationAngleRange, rotationAngleRange);
             canvas.Mutate(x => x.Rotate(randomAngle));
 
-            // Define the bounds for cropping out non-transparent areas
+            // Define the bounds for cropping out non-transparent areas.
             int left = canvas.Width, right = 0, top = canvas.Height, bottom = 0;
             for (int y = 0; y < canvas.Height; y++)
             {
                 for (int x = 0; x < canvas.Width; x++)
                 {
                     Rgba32 pixel = canvas[x, y];
-                    if (pixel.A > 0) // Find non-transparent pixels
+                    if (pixel.A > 0) // Find non-transparent pixels.
                     {
                         if (x < left) left = x;
                         if (x > right) right = x;
@@ -213,25 +212,25 @@ namespace TestHarness
                 }
             }
 
-            // Crop to the bounding box of the rotated image content
+            // Crop to the bounding box of the rotated image content.
             int width = right - left + 1;
             int height = bottom - top + 1;
             var bounds = new Rectangle(left, top, width, height);
             canvas.Mutate(x => x.Crop(bounds));
 
-            // Define initial bounds for cropping non-white areas
+            // Define initial bounds for cropping non-white areas.
             left = canvas.Width;
             right = 0;
             top = canvas.Height;
             bottom = 0;
 
-            // Loop through pixels to find non-white areas
+            // Loop through pixels to find non-white areas.
             for (int y = 0; y < canvas.Height; y++)
             {
                 for (int x = 0; x < canvas.Width; x++)
                 {
                     Rgba32 pixel = canvas[x, y];
-                    if (pixel.A > 0 && (pixel.R < 255 || pixel.G < 255 || pixel.B < 255)) // Adjust for your background color
+                    if (pixel.A > 0 && (pixel.R < 255 || pixel.G < 255 || pixel.B < 255))
                     {
                         if (x < left) left = x;
                         if (x > right) right = x;
@@ -241,20 +240,18 @@ namespace TestHarness
                 }
             }
 
-            // Calculate the bounding box
+            // Calculate the bounding box.
             width = right - left + 1;
             height = bottom - top + 1;
             bounds = new Rectangle(left, top, width, height);
 
-            // Crop to the bounding box
+            // Crop to the bounding box.
             canvas.Mutate(x => x.Crop(bounds));
 
-            // Resize to target dimensions
+            // Resize to target dimensions.
             using var finalResizedImg = canvas.Clone(context => context.Resize(resizeWidth, resizeHeight));
 
-            //finalResizedImg.SaveAsPng(@$"C:\Users\ntdls\Desktop\Test\{Path.GetFileName(imagePath)}");
-
-            // Convert to grayscale and normalize
+            // Convert to grayscale and normalize.
             double[] pixelData = new double[resizeWidth * resizeHeight];
             int index = 0;
             for (int y = 0; y < finalResizedImg.Height; y++)
@@ -263,7 +260,7 @@ namespace TestHarness
                 {
                     var pixel = finalResizedImg[x, y];
                     byte grayValue = (byte)(0.299 * pixel.R + 0.587 * pixel.G + 0.114 * pixel.B);
-                    pixelData[index++] = grayValue / 255.0; // Scale the pixel value to 0-1.
+                    pixelData[index++] = grayValue / 255.0; // Scale the pixel value to 0-1 (normalize).
                 }
             }
 
