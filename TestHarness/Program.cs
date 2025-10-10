@@ -255,7 +255,7 @@ namespace TestHarness
 
                 epochLoss /= Math.Max(1, samplesProcessed);
 
-                Console.WriteLine($"Epoch {epoch + 1}/{_trainingEpochs} - Loss: {epochLoss:n8} - Learning Rate: {learningRate:n8}");
+                Console.WriteLine($"Epoch {epoch + 1}/{_trainingEpochs} - Loss: {epochLoss:n8} - Learning Rate: {learningRate:n10}");
 
                 #region Learning Rate Scheduler.
 

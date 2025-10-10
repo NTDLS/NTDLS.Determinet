@@ -14,8 +14,8 @@ namespace TestHarnessDraw
             InitializeComponent();
             DoubleBuffered = true;
 
-            Width = 200;
-            Height = 200;
+            Width = 400;
+            Height = 400;
             BackColor = Color.White;
 
             drawingBitmap = new Bitmap(Width, Height);

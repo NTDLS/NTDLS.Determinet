@@ -11,24 +11,16 @@ namespace NTDLS.Determinet.ActivationFunctions
     public class DniPiecewiseLinearFunction : IDniActivationFunction
     {
         [ProtoMember(1)]
-        public double Alpha { get; private set; } //Linear slope value.
+        public double Alpha { get; private set; } = 0.1; //Linear slope value.
 
         [ProtoMember(2)]
-        public DniRange Range { get; private set; }//Function output range.
+        public DniRange Range { get; private set; } = new DniRange(-1, +1); //Function output range.
 
 
-        public DniPiecewiseLinearFunction(DniNamedFunctionParameters? param)
+        public DniPiecewiseLinearFunction(DniNamedFunctionParameters param)
         {
-            if (param == null)
-            {
-                Alpha = 0.1;
-                Range = new DniRange(-1, +1);
-            }
-            else
-            {
-                Alpha = param.Get<double>("alpha", 1);
-                Range = param.Get<DniRange>("range", new DniRange(-1, +1));
-            }
+            Alpha = param.Get<double>("alpha", 0.1);
+            Range = param.Get<DniRange>("range", new DniRange(-1, +1));
         }
 
         public double[] Activation(double[] nodes)

@@ -1,6 +1,7 @@
 ﻿using NTDLS.Determinet.ActivationFunctions;
 using NTDLS.Determinet.Types;
 using ProtoBuf;
+using System.Reflection.Emit;
 
 namespace NTDLS.Determinet
 {
@@ -79,11 +80,41 @@ namespace NTDLS.Determinet
 
             for (int i = 1; i < State.Layers.Count; i++)
             {
-                State.Layers[i].Activations = ActivateLayer(State.Layers[i - 1].Activations, State.Synapses[i - 1].Weights, State.Synapses[i - 1].Biases);
-                State.Layers[i].Activations = State.Layers[i].Activate();
+                var layer = State.Layers[i];
+
+                layer.Activations = // Weighted sum
+                     ActivateLayer(State.Layers[i - 1].Activations, State.Synapses[i - 1].Weights, State.Synapses[i - 1].Biases);
+
+                if (layer.ActivationParameters.Get("UseBatchNorm", false))
+                {
+                    BatchNormalize(layer);
+                }
+
+                // Nonlinear activation
+                layer.Activations = layer.Activate();
             }
 
-            return State.Layers.Last().Activations; // Return the output layer
+            return State.Layers.Last().Activations;
+        }
+
+        /// <summary>
+        /// Normalizes the values in the specified array of activations using batch normalization.
+        /// </summary>
+        /// <remarks>This method applies batch normalization to the input array by adjusting the values to
+        /// have a mean of 0 and a standard deviation of 1, followed by optional scaling and shifting.  The
+        /// normalization is performed in place, modifying the original array.</remarks>
+        /// <param name="activations">An array of activation values to be normalized. The array is modified in place.</param>
+        private static void BatchNormalize(DniLayer layer)
+        {
+            double mean = layer.Activations.Average();
+            double variance = layer.Activations.Select(a => Math.Pow(a - mean, 2)).Average();
+            double stdDev = Math.Sqrt(variance + 1e-8);
+
+            double gamma = layer.ActivationParameters.Get("BatchNormGamma", 1);  // scale
+            double beta = layer.ActivationParameters.Get("BatchNormBeta", 1); ;  // shift
+
+            for (int i = 0; i < layer.Activations.Length; i++)
+                layer.Activations[i] = gamma * ((layer.Activations[i] - mean) / stdDev) + beta;
         }
 
         /// <summary>

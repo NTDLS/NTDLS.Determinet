@@ -8,6 +8,13 @@ namespace NTDLS.Determinet
     [ProtoContract]
     internal class DniLayer
     {
+        /*
+         * Parameters that are common to all layers:
+         *  UseBatchNorm: bool     | whether to use batch normalization or for the layer. See BatchNormalize() method in DniNetwork class.
+         *  BatchNormGamma: double | (also called scale), default 1. Used in batch normalization.
+         *  BatchNormBeta: double  | (also called shift), default 0. Used in batch normalization.
+        */
+
         [ProtoMember(1)] public DniLayerType LayerType { get; set; }
 
         public double[] Activations { get; set; }

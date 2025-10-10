@@ -11,15 +11,13 @@ namespace NTDLS.Determinet.ActivationFunctions
     public class DniLinearFunction : IDniActivationFunction
     {
         [ProtoMember(1)]
-        public double Alpha { get; private set; } //Linear slope value.
+        public double Alpha { get; private set; } = 1; //Linear slope value.
 
         [ProtoMember(2)]
-        public DniRange Range { get; private set; }//Function output range.
+        public DniRange Range { get; private set; } = new DniRange(-1, +1); //Function output range.
 
-        public DniLinearFunction(DniNamedFunctionParameters? param)
+        public DniLinearFunction(DniNamedFunctionParameters param)
         {
-            if (param == null) throw new ArgumentNullException(nameof(param));
-
             Alpha = param.Get<double>("Alpha", 1);
             Range = param.Get("Range", new DniRange(-1, +1));
         }

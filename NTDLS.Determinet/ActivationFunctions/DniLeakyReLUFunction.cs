@@ -1,4 +1,6 @@
 ﻿using NTDLS.Determinet.ActivationFunctions.Interfaces;
+using NTDLS.Determinet.Types;
+using ProtoBuf;
 
 namespace NTDLS.Determinet.ActivationFunctions
 {
@@ -10,16 +12,27 @@ namespace NTDLS.Determinet.ActivationFunctions
     /// </summary>
     public class DniLeakyReLUFunction : IDniActivationFunction
     {
+        [ProtoMember(1)]
+        public double Alpha { get; private set; } = 0.01; //Linear slope value.
+
+        public DniLeakyReLUFunction()
+        {
+        }
+
+        public DniLeakyReLUFunction(DniNamedFunctionParameters param)
+        {
+            Alpha = param.Get("Alpha", 0.01);
+        }
+
         public double[] Activation(double[] nodes)
         {
-            double[] result = new double[nodes.Length];
+            var result = new double[nodes.Length];
             for (int i = 0; i < nodes.Length; i++)
             {
                 double x = nodes[i];
                 if (double.IsNaN(x) || double.IsInfinity(x))
-                    x = 0; // neutralize bad input
-
-                result[i] = x <= 0 ? 0.01 * x : x;
+                    x = 0;
+                result[i] = x <= 0 ? Alpha * x : x;
             }
             return result;
         }
@@ -28,7 +41,7 @@ namespace NTDLS.Determinet.ActivationFunctions
         {
             if (double.IsNaN(x) || double.IsInfinity(x))
                 return 0;
-            return x <= 0 ? 0.01 : 1.0;
+            return x <= 0 ? Alpha : 1.0;
         }
     }
 }

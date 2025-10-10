@@ -5,35 +5,19 @@
     /// </summary>
     public class DniNamedFunctionParameters
     {
-        public readonly Dictionary<string, object> Values = new();
+        public readonly Dictionary<string, object> Values = new(StringComparer.InvariantCultureIgnoreCase);
 
-        public void Set(object key, double value)
-        {
-            string stringKey = (key?.ToString() ?? string.Empty).ToLower();
+        public void Set(string key, double value)
+            => Values[key] = value;
 
-            if (Values.ContainsKey(stringKey))
-            {
-                Values[stringKey] = value;
-            }
-            else
-            {
-                Values.Add(stringKey, value);
-            }
-        }
+        public void Set(string key, DniRange value)
+            => Values[key] = value;
 
-        public void Set(object key, DniRange value)
-        {
-            string stringKey = (key?.ToString() ?? string.Empty).ToLower();
+        public T Get<T>(string key)
+            => (T)Values[key];
 
-            if (Values.ContainsKey(stringKey))
-            {
-                Values[stringKey] = value;
-            }
-            else
-            {
-                Values.Add(stringKey, value);
-            }
-        }
+        public KeyValuePair<string, object> Get(int index)
+            => Values.ElementAt(index);
 
         public object[] ToArray()
         {
@@ -46,36 +30,11 @@
             return values;
         }
 
-        public T Get<T>(object key)
+        public T Get<T>(string key, T defaultValue)
         {
-            string stringKey = (key?.ToString() ?? string.Empty).ToLower();
-
-            return (T)Values[stringKey];
-        }
-
-        public T Get<T>(object key, T defaultValue)
-        {
-            string stringKey = (key?.ToString() ?? string.Empty).ToLower();
-
-            if (Values.ContainsKey(stringKey))
+            if (Values.TryGetValue(key, out object? value) && value != null)
             {
-                return (T)Values[stringKey];
-            }
-            return defaultValue;
-        }
-
-        public KeyValuePair<string, object> Get(int index)
-        {
-            return Values.ElementAt(index);
-        }
-
-        public object Get(object key, object defaultValue)
-        {
-            string stringKey = (key?.ToString() ?? string.Empty).ToLower();
-
-            if (Values.TryGetValue(stringKey, out object? value))
-            {
-                return value;
+                return (T)value;
             }
             return defaultValue;
         }

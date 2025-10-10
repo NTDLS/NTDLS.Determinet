@@ -45,14 +45,14 @@
             // simpleDrawControl
             // 
             simpleDrawControl.BackColor = Color.White;
-            simpleDrawControl.Location = new Point(24, 94);
+            simpleDrawControl.Location = new Point(24, 41);
             simpleDrawControl.Name = "simpleDrawControl";
-            simpleDrawControl.Size = new Size(200, 200);
+            simpleDrawControl.Size = new Size(400, 400);
             simpleDrawControl.TabIndex = 0;
             // 
             // buttonClear
             // 
-            buttonClear.Location = new Point(122, 300);
+            buttonClear.Location = new Point(349, 447);
             buttonClear.Name = "buttonClear";
             buttonClear.Size = new Size(75, 23);
             buttonClear.TabIndex = 1;
@@ -72,7 +72,7 @@
             // 
             // textBoxDetected
             // 
-            textBoxDetected.Location = new Point(230, 112);
+            textBoxDetected.Location = new Point(430, 59);
             textBoxDetected.Name = "textBoxDetected";
             textBoxDetected.ReadOnly = true;
             textBoxDetected.Size = new Size(92, 23);
@@ -81,7 +81,7 @@
             // labelDetected
             // 
             labelDetected.AutoSize = true;
-            labelDetected.Location = new Point(230, 94);
+            labelDetected.Location = new Point(430, 41);
             labelDetected.Name = "labelDetected";
             labelDetected.Size = new Size(82, 15);
             labelDetected.TabIndex = 4;
@@ -90,16 +90,16 @@
             // pictureBoxAiView
             // 
             pictureBoxAiView.BackgroundImageLayout = ImageLayout.None;
-            pictureBoxAiView.Location = new Point(230, 216);
+            pictureBoxAiView.Location = new Point(430, 163);
             pictureBoxAiView.Name = "pictureBoxAiView";
-            pictureBoxAiView.Size = new Size(82, 78);
+            pictureBoxAiView.Size = new Size(128, 128);
             pictureBoxAiView.SizeMode = PictureBoxSizeMode.StretchImage;
             pictureBoxAiView.TabIndex = 5;
             pictureBoxAiView.TabStop = false;
             // 
             // buttonLoadImage
             // 
-            buttonLoadImage.Location = new Point(24, 300);
+            buttonLoadImage.Location = new Point(251, 447);
             buttonLoadImage.Name = "buttonLoadImage";
             buttonLoadImage.Size = new Size(92, 23);
             buttonLoadImage.TabIndex = 6;
@@ -119,7 +119,7 @@
             // labelConfidence
             // 
             labelConfidence.AutoSize = true;
-            labelConfidence.Location = new Point(230, 146);
+            labelConfidence.Location = new Point(430, 93);
             labelConfidence.Name = "labelConfidence";
             labelConfidence.Size = new Size(68, 15);
             labelConfidence.TabIndex = 9;
@@ -127,7 +127,7 @@
             // 
             // textBoxConfidence
             // 
-            textBoxConfidence.Location = new Point(230, 164);
+            textBoxConfidence.Location = new Point(430, 111);
             textBoxConfidence.Name = "textBoxConfidence";
             textBoxConfidence.ReadOnly = true;
             textBoxConfidence.Size = new Size(102, 23);
@@ -136,7 +136,7 @@
             // labelSanitized
             // 
             labelSanitized.AutoSize = true;
-            labelSanitized.Location = new Point(230, 198);
+            labelSanitized.Location = new Point(430, 145);
             labelSanitized.Name = "labelSanitized";
             labelSanitized.Size = new Size(54, 15);
             labelSanitized.TabIndex = 10;
@@ -146,7 +146,7 @@
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(451, 356);
+            ClientSize = new Size(569, 480);
             Controls.Add(labelSanitized);
             Controls.Add(labelConfidence);
             Controls.Add(textBoxConfidence);

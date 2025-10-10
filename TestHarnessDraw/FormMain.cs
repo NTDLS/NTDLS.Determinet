@@ -1,9 +1,16 @@
 using NTDLS.Determinet;
+using System.Windows.Forms;
 
 namespace TestHarnessDraw
 {
     public partial class FormMain : Form
     {
+        private char[] distinctCharacters = new char[] {
+                '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
+                'a', 'b', 'c', 'd', 'e', 'f','g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
+                'A', 'B', 'C', 'D', 'E', 'F','G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'
+            };
+
         private DniNeuralNetwork? _dni;
         const int _imageWidth = 64;              // Downscale for faster processing with minimal quality loss.
         const int _imageHeight = 64;             // Downscale for faster processing with minimal quality loss.
@@ -27,6 +34,7 @@ namespace TestHarnessDraw
             if (File.Exists(debugModelFile))
             {
                 _dni = DniNeuralNetwork.LoadFromFile(debugModelFile);
+                simpleDrawControl.LoadFromFile("C:\\NTDLS\\NTDLS.Determinet\\Training Characters\\K 004 Heebo Thin.png");
             }
         }
 
@@ -38,9 +46,18 @@ namespace TestHarnessDraw
             {
                 try
                 {
-                    var detectedValue = DniUtility.GetIndexOfMaxValue(_dni.Forward(inputBits), out var confidence);
-                    textBoxDetected.Text = detectedValue.ToString();
-                    textBoxConfidence.Text = $"{confidence:n4}";
+                    var outputs = _dni.Forward(inputBits);
+                    var top3 = outputs
+                        .Select((v, i) => new { Index = i, Value = v })
+                        .OrderByDescending(x => x.Value)
+                        .Take(3)
+                        .ToArray();
+
+                    textBoxDetected.Text = $"{distinctCharacters[top3[0].Index]}";
+                    textBoxConfidence.Text = $"{top3[0].Value:n4}";
+
+                    Console.WriteLine($"Top3: {string.Join(", ", top3.Select(x => $"{distinctCharacters[x.Index]}({x.Value:n3})"))}");
+
                 }
                 catch
                 {
