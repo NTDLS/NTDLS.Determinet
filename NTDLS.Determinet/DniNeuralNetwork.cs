@@ -1,7 +1,6 @@
 ﻿using NTDLS.Determinet.ActivationFunctions;
 using NTDLS.Determinet.Types;
 using ProtoBuf;
-using System.Reflection.Emit;
 
 namespace NTDLS.Determinet
 {
@@ -223,22 +222,6 @@ namespace NTDLS.Determinet
                 }
             }
         }
-
-        /*
-        public double Train(double[] inputs, double[] outputs)
-        {
-            // Forward pass to get the prediction
-            var predictions = Forward(inputs);
-
-            // Calculate and accumulate the loss
-            var loss = -Math.Log(predictions[Array.IndexOf(outputs, 1.0)]);
-
-            // Perform backpropagation to update weights
-            Backpropagate(inputs, outputs);
-
-            return loss;
-        }
-        */
 
         /// <summary>
         /// Training function for single epoch.
