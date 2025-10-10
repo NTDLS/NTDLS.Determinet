@@ -1,4 +1,7 @@
 using NTDLS.Determinet;
+using SixLabors.ImageSharp.Processing;
+using System.Drawing.Imaging;
+using System.Windows.Forms.DataVisualization.Charting;
 
 namespace TestHarnessDraw
 {
@@ -21,6 +24,8 @@ namespace TestHarnessDraw
 
         private void Form1_Load(object sender, EventArgs e)
         {
+            InitializeChart();
+
             var timer = new System.Windows.Forms.Timer()
             {
                 Interval = 250,
@@ -32,8 +37,8 @@ namespace TestHarnessDraw
             var debugModelFile = @"C:\NTDLS\NTDLS.Determinet\TestHarness\bin\Release\net9.0\trained.dni";
             if (File.Exists(debugModelFile))
             {
-                _dni = DniNeuralNetwork.LoadFromFile(debugModelFile);
-                simpleDrawControl.LoadFromFile("C:\\NTDLS\\NTDLS.Determinet\\Training Characters\\K 004 Heebo Thin.png");
+                LoadModelFromFile(debugModelFile);
+                simpleDrawControl.LoadImageFromFile("C:\\NTDLS\\NTDLS.Determinet\\Training Characters\\K 004 Heebo Thin.png");
             }
         }
 
@@ -46,17 +51,12 @@ namespace TestHarnessDraw
                 try
                 {
                     var outputs = _dni.Forward(inputBits);
-                    var top3 = outputs
-                        .Select((v, i) => new { Index = i, Value = v })
-                        .OrderByDescending(x => x.Value)
-                        .Take(3)
-                        .ToArray();
+                    var prediction = DniUtility.IndexOfMaxValue(outputs, out var confidence);
 
-                    textBoxDetected.Text = $"{distinctCharacters[top3[0].Index]}";
-                    textBoxConfidence.Text = $"{top3[0].Value:n4}";
+                    textBoxDetected.Text = $"{distinctCharacters[prediction]}";
+                    textBoxConfidence.Text = $"{confidence:n4}";
 
-                    Console.WriteLine($"Top3: {string.Join(", ", top3.Select(x => $"{distinctCharacters[x.Index]}({x.Value:n3})"))}");
-
+                    UpdateChart(outputs, distinctCharacters);
                 }
                 catch
                 {
@@ -64,88 +64,171 @@ namespace TestHarnessDraw
             }
         }
 
+        private void InitializeChart()
+        {
+            chartPredictions.Series.Clear();
+            chartPredictions.ChartAreas.Clear();
+
+            var chartArea = new ChartArea("OutputArea");
+            chartPredictions.ChartAreas.Add(chartArea);
+
+            var series = new Series("Confidence")
+            {
+                ChartType = SeriesChartType.Column,
+                IsValueShownAsLabel = true,
+                Color = Color.OrangeRed,
+                XValueType = ChartValueType.String,
+                IsXValueIndexed = false,
+                IsVisibleInLegend = false
+            };
+            chartPredictions.Series.Add(series);
+
+            chartArea.AxisX.Interval = 1;
+            chartArea.AxisX.MajorGrid.Enabled = false;
+            chartArea.AxisY.MajorGrid.LineColor = Color.LightGray;
+            chartArea.AxisY.Minimum = 0;
+            chartArea.AxisY.Maximum = 1;
+        }
+
+        private void UpdateChart(double[] outputs, char[] distinctCharacters)
+        {
+            var series = chartPredictions.Series["Confidence"];
+            series.Points.Clear();
+
+            var top = outputs
+                .Select((v, i) => new { Index = i, Value = v })
+                .OrderByDescending(x => x.Value)
+                .Take(5)
+                .ToArray();
+
+            // Add each prediction as its own bar
+            for (int i = 0; i < top.Length; i++)
+            {
+                string label = distinctCharacters[top[i].Index].ToString();
+                double value = top[i].Value;
+
+                var point = new DataPoint(i + 1, value)
+                {
+                    AxisLabel = label,
+                    Label = value.ToString("0.##"),
+                    Color = Color.OrangeRed
+                };
+                series.Points.Add(point);
+            }
+
+            // Adjust axes for better spacing
+            var area = chartPredictions.ChartAreas[0];
+            area.AxisX.Interval = 1;
+            area.AxisY.Minimum = 0;
+            area.AxisY.Maximum = 1;
+            area.AxisX.MajorGrid.Enabled = false;
+            area.AxisY.MajorGrid.LineColor = Color.LightGray;
+            chartPredictions.Invalidate();
+        }
+
+        public static Bitmap ToBitmap(SixLabors.ImageSharp.Image<SixLabors.ImageSharp.PixelFormats.Rgba32> image)
+        {
+            using var ms = new MemoryStream();
+            image.Save(ms, new SixLabors.ImageSharp.Formats.Png.PngEncoder());   // lossless
+            ms.Position = 0;
+            return new Bitmap(ms);
+        }
+
+        public static SixLabors.ImageSharp.Image<SixLabors.ImageSharp.PixelFormats.Rgba32> ConvertBitmapToImageSharp(Bitmap bitmap)
+        {
+            using var memoryStream = new MemoryStream();
+
+            // Save the System.Drawing.Bitmap to a memory stream in a lossless format
+            bitmap.Save(memoryStream, ImageFormat.Png);
+            memoryStream.Position = 0;
+
+            // Load that stream as an ImageSharp image
+            return SixLabors.ImageSharp.Image.Load<SixLabors.ImageSharp.PixelFormats.Rgba32>(memoryStream);
+        }
+
         private double[]? GetImageGrayscaleBytes(int resizeWidth, int resizeHeight)
         {
             var bitmap = simpleDrawControl.GetDrawingBitmap();
 
-            int left = bitmap.Width, right = 0, top = bitmap.Height, bottom = 0;
-            int threshold = 250;
+            // Load the image in RGB format and convert to RGBA.
+            using var img = ConvertBitmapToImageSharp(bitmap);
 
-            // Detect non-white pixels
-            for (int y = 0; y < bitmap.Height; y++)
+            int width = img.Width;
+            int height = img.Height;
+
+            // Detect bounds of non-white pixels
+            int threshold = 250;
+            int left = width, right = 0, top = height, bottom = 0;
+
+            img.ProcessPixelRows(accessor =>
             {
-                for (int x = 0; x < bitmap.Width; x++)
+                for (int y = 0; y < height; y++)
                 {
-                    Color pixel = bitmap.GetPixel(x, y);
-                    if (pixel.R < threshold || pixel.G < threshold || pixel.B < threshold)
+                    var row = accessor.GetRowSpan(y);
+                    for (int x = 0; x < width; x++)
                     {
-                        if (x < left) left = x;
-                        if (x > right) right = x;
-                        if (y < top) top = y;
-                        if (y > bottom) bottom = y;
+                        SixLabors.ImageSharp.PixelFormats.Rgba32 p = row[x];
+                        if (p.R < threshold || p.G < threshold || p.B < threshold)
+                        {
+                            if (x < left) left = x;
+                            if (x > right) right = x;
+                            if (y < top) top = y;
+                            if (y > bottom) bottom = y;
+                        }
                     }
                 }
-            }
+            });
 
-            // Blank drawing detection
+            // No ink detected — blank image
             if (right <= left || bottom <= top)
-            {
-                pictureBoxAiView.Image = null;
                 return null;
-            }
 
-            // Add margin and clamp
+            // Add margin and clamp to image edges
             int margin = 5;
-            int cropLeft = Math.Max(0, left - margin);
-            int cropTop = Math.Max(0, top - margin);
-            int cropRight = Math.Min(bitmap.Width - 1, right + margin);
-            int cropBottom = Math.Min(bitmap.Height - 1, bottom + margin);
-            int cropWidth = cropRight - cropLeft + 1;
-            int cropHeight = cropBottom - cropTop + 1;
+            left = Math.Max(0, left - margin);
+            top = Math.Max(0, top - margin);
+            right = Math.Min(width - 1, right + margin);
+            bottom = Math.Min(height - 1, bottom + margin);
+
+            int cropWidth = right - left + 1;
+            int cropHeight = bottom - top + 1;
 
             // Crop region of interest
-            Rectangle bounds = new Rectangle(cropLeft, cropTop, cropWidth, cropHeight);
-            using var cropped = bitmap.Clone(bounds, bitmap.PixelFormat);
+            var bounds = new SixLabors.ImageSharp.Rectangle(left, top, cropWidth, cropHeight);
+            using var cropped = img.Clone(ctx => ctx.Crop(bounds));
 
-            // Center in square canvas
-            int squareSize = Math.Max(cropWidth, cropHeight);
-            using var squareCanvas = new Bitmap(squareSize, squareSize);
+            // Create a square white canvas (to center drawing)
+            int squareSize = Math.Max(cropWidth + (margin * 2), cropHeight + (margin * 2));
+            using var squareCanvas = new SixLabors.ImageSharp.Image<SixLabors.ImageSharp.PixelFormats.Rgba32>(squareSize, squareSize, SixLabors.ImageSharp.Color.White);
 
-            using (Graphics g = Graphics.FromImage(squareCanvas))
-            {
-                g.Clear(Color.White);
-                g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
-                g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+            int offsetX = (squareSize - cropWidth) / 2;
+            int offsetY = (squareSize - cropHeight) / 2;
+            squareCanvas.Mutate(ctx => ctx.DrawImage(cropped, new SixLabors.ImageSharp.Point(offsetX, offsetY), 1f));
 
-                int offsetX = (squareSize - cropWidth) / 2;
-                int offsetY = (squareSize - cropHeight) / 2;
+            using var resized = squareCanvas.Clone(ctx => ctx.Resize(resizeWidth, resizeHeight));
 
-                g.DrawImage(cropped, offsetX, offsetY, cropWidth, cropHeight);
-            }
+            pictureBoxAiView.Image = ToBitmap(resized);
 
-            // Resize to target network input
-            using var resized = new Bitmap(squareCanvas, new Size(resizeWidth, resizeHeight));
-
-            // Visualize what the network sees
-            pictureBoxAiView.Image = (Bitmap)resized.Clone();
-
-            // Convert to grayscale normalized [0..1], 0 = black, 1 = white
-            double[] pixelData = new double[resizeWidth * resizeHeight];
+            // Convert to grayscale and normalize [0..1]
+            var pixels = new double[resizeWidth * resizeHeight];
             int index = 0;
 
-            for (int y = 0; y < resizeHeight; y++)
+            resized.ProcessPixelRows(accessor =>
             {
-                for (int x = 0; x < resizeWidth; x++)
+                for (int y = 0; y < resizeHeight; y++)
                 {
-                    Color p = resized.GetPixel(x, y);
-                    double gray = (0.299 * p.R + 0.587 * p.G + 0.114 * p.B) / 255.0;
-                    pixelData[index++] = gray;
+                    var row = accessor.GetRowSpan(y);
+                    for (int x = 0; x < resizeWidth; x++)
+                    {
+                        SixLabors.ImageSharp.PixelFormats.Rgba32 p = row[x];
+                        double gray = (0.299 * p.R + 0.587 * p.G + 0.114 * p.B) / 255.0;
+                        pixels[index++] = gray;
+                    }
                 }
-            }
+            });
 
-            return pixelData;
+            return pixels;
         }
-
 
         private void ButtonClear_Click(object sender, EventArgs e)
         {
@@ -162,9 +245,21 @@ namespace TestHarnessDraw
 
             if (openFileDialog.ShowDialog() == DialogResult.OK)
             {
-                _dni = DniNeuralNetwork.LoadFromFile(openFileDialog.FileName)
-                    ?? throw new Exception("Failed to load the network from file.");
+                LoadModelFromFile(openFileDialog.FileName);
             }
+        }
+
+        private void LoadModelFromFile(string fileName)
+        {
+            _dni = DniNeuralNetwork.LoadFromFile(fileName)
+                ?? throw new Exception("Failed to load the network from file.");
+
+            // Remove "UseBatchNorm" parameter from all layers if it exists
+            foreach (var layer in _dni.State.Layers)
+            {
+                layer.Parameters.Remove("UseBatchNorm");
+            }
+
         }
 
         private void ButtonLoadImage_Click(object sender, EventArgs e)
@@ -177,7 +272,7 @@ namespace TestHarnessDraw
 
             if (openFileDialog.ShowDialog() == DialogResult.OK)
             {
-                simpleDrawControl.LoadFromFile(openFileDialog.FileName);
+                simpleDrawControl.LoadImageFromFile(openFileDialog.FileName);
             }
         }
     }

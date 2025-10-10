@@ -9,42 +9,30 @@ namespace NTDLS.Determinet.Types
     [ProtoContract]
     public class DniNamedInterfaceParameters
     {
-        [ProtoMember(1)]
-        public Dictionary<string, double> Lookup { get; private set; } = new();
+        [ProtoMember(1)] public Dictionary<string, double> Lookup { get; private set; } = new(StringComparer.InvariantCultureIgnoreCase);
 
-        public void Set(object key, double value)
-        {
-            string stringKey = (key?.ToString() ?? string.Empty).ToLower();
-            if (Lookup.ContainsKey(stringKey))
-            {
-                Lookup[stringKey] = value;
-            }
-            else
-            {
-                Lookup.Add(stringKey, value);
-            }
-        }
+
+        public void Set(string key, double value)
+            => Lookup[key] = value;
 
         /// <summary>
         /// Sets the input value if the given value is less than the existing value or if the key does not yet exist.
         /// </summary>
         /// <param name="key"></param>
         /// <param name="value"></param>
-        public void SetIfLess(object key, double value)
+        public void SetIfLess(string key, double value)
         {
-            string stringKey = (key?.ToString() ?? string.Empty).ToLower();
-
-            if (Lookup.ContainsKey(stringKey) == false)
+            if (Lookup.ContainsKey(key) == false)
             {
-                Lookup.Add(stringKey, value);
+                Lookup.Add(key, value);
             }
             else
             {
-                var existingValue = Lookup[stringKey];
+                var existingValue = Lookup[key];
 
                 if (value < existingValue)
                 {
-                    Lookup[stringKey] = value;
+                    Lookup[key] = value;
                 }
             }
         }
@@ -54,21 +42,19 @@ namespace NTDLS.Determinet.Types
         /// </summary>
         /// <param name="key"></param>
         /// <param name="value"></param>
-        public void SetIfGreater(object key, double value)
+        public void SetIfGreater(string key, double value)
         {
-            string stringKey = (key?.ToString() ?? string.Empty).ToLower();
-
-            if (Lookup.ContainsKey(stringKey) == false)
+            if (Lookup.ContainsKey(key) == false)
             {
-                Lookup.Add(stringKey, value);
+                Lookup.Add(key, value);
             }
             else
             {
-                var existingValue = Lookup[stringKey];
+                var existingValue = Lookup[key];
 
                 if (value > existingValue)
                 {
-                    Lookup[stringKey] = value;
+                    Lookup[key] = value;
                 }
             }
         }
@@ -84,22 +70,15 @@ namespace NTDLS.Determinet.Types
             return values;
         }
 
-        public double Get(object key)
-        {
-            string stringKey = (key?.ToString() ?? string.Empty).ToLower();
-            return Lookup[stringKey];
-        }
+        public double Get(string key)
+            => Lookup[key];
 
         public KeyValuePair<string, double> Get(int index)
-        {
-            return Lookup.ElementAt(index);
-        }
+            => Lookup.ElementAt(index);
 
-        public double Get(object key, double defaultValue)
+        public double Get(string key, double defaultValue)
         {
-            string stringKey = (key?.ToString() ?? string.Empty).ToLower();
-
-            if (Lookup.TryGetValue(stringKey, out double value))
+            if (Lookup.TryGetValue(key, out double value))
             {
                 return value;
             }

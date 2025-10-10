@@ -5,29 +5,43 @@ using ProtoBuf;
 
 namespace NTDLS.Determinet
 {
+    /// <summary>
+    /// Represents a layer in a neural network, including its type, node count, activation function, and configuration
+    /// parameters.
+    /// </summary>
+    /// <remarks>The <see cref="DniLayer"/> class is a fundamental building block for constructing neural
+    /// networks. It encapsulates the properties and behavior of a single layer, including its activation function and
+    /// the activations of its nodes. Layers can be configured with different types, activation functions, and
+    /// parameters to suit various network architectures.</remarks>
     [ProtoContract]
-    internal class DniLayer
+    public class DniLayer
     {
-        /*
-         * Parameters that are common to all layers:
-         *  UseBatchNorm: bool     | whether to use batch normalization or for the layer. See BatchNormalize() method in DniNetwork class.
-         *  BatchNormGamma: double | (also called scale), default 1. Used in batch normalization.
-         *  BatchNormBeta: double  | (also called shift), default 0. Used in batch normalization.
-        */
+        public double[] Activations { get; internal set; }
 
-        [ProtoMember(1)] public DniLayerType LayerType { get; set; }
-
-        public double[] Activations { get; set; }
-        [ProtoMember(2)] public int NodeCount { get; set; }
-        public DniNamedFunctionParameters ActivationParameters { get; set; }
-
-        [ProtoMember(3)] public DniActivationType ActivationType { get; set; }
-
+        /// <summary>
+        /// Object instance of the activation function for this layer.
+        /// Set by InstantiateActivationFunction() method.
+        /// </summary>
         public IDniActivationFunction? ActivationFunction { get; internal set; }
 
-        public DniLayer(DniLayerType layerType, int nodeCount, DniActivationType activationType, DniNamedFunctionParameters activationParameters)
+        [ProtoMember(1)] public DniLayerType LayerType { get; private set; }
+        [ProtoMember(2)] public int NodeCount { get; private set; }
+        [ProtoMember(3)] public DniNamedFunctionParameters Parameters { get; private set; }
+        [ProtoMember(4)] public DniActivationType ActivationType { get; private set; }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="DniLayer"/> class with the specified layer type, node count,
+        /// activation type, and parameters.
+        /// </summary>
+        /// <remarks>This constructor initializes the layer's activation function and allocates memory for
+        /// the activations based on the specified node count.</remarks>
+        /// <param name="layerType">The type of the layer, which determines its role in the network.</param>
+        /// <param name="nodeCount">The number of nodes (or neurons) in the layer. Must be a positive integer.</param>
+        /// <param name="activationType">The activation function type to be used by the layer.</param>
+        /// <param name="parameters">A collection of named parameters that configure the layer's behavior. These are also passed to the activation function.</param>
+        public DniLayer(DniLayerType layerType, int nodeCount, DniActivationType activationType, DniNamedFunctionParameters parameters)
         {
-            ActivationParameters = activationParameters;
+            Parameters = parameters;
             LayerType = layerType;
             NodeCount = nodeCount;
             ActivationType = activationType;
@@ -35,9 +49,19 @@ namespace NTDLS.Determinet
             InstantiateActivationFunction();
         }
 
-        public DniLayer(DniLayerType layerType, int nodeCount, DniNamedFunctionParameters activationParameters)
+        /// <summary>
+        /// Initializes a new instance of the <see cref="DniLayer"/> class with the specified layer type, node count,
+        /// and parameters.
+        /// </summary>
+        /// <remarks>This constructor initializes the layer with the specified configuration, setting up
+        /// the activation function and allocating space for activations. The <see cref="ActivationType"/> is set to
+        /// <see cref="DniActivationType.None"/> by default.</remarks>
+        /// <param name="layerType">The type of the layer, which determines its role in the network.</param>
+        /// <param name="nodeCount">The number of nodes in the layer. Must be a positive integer.</param>
+        /// <param name="parameters">A collection of named parameters that configure the layer's behavior. These are also passed to the activation function.</param>
+        public DniLayer(DniLayerType layerType, int nodeCount, DniNamedFunctionParameters parameters)
         {
-            ActivationParameters = activationParameters;
+            Parameters = parameters;
             LayerType = layerType;
             NodeCount = nodeCount;
             ActivationType = DniActivationType.None;
@@ -49,7 +73,7 @@ namespace NTDLS.Determinet
         {
             //Only used for deserialization.
             Activations = Array.Empty<double>();
-            ActivationParameters = new();
+            Parameters = new();
         }
 
         public double[] Activate()
@@ -58,10 +82,7 @@ namespace NTDLS.Determinet
             {
                 return ActivationFunction.Activation(Activations);
             }
-            else
-            {
-                return Activations;
-            }
+            return Activations;
         }
 
         public double ActivateDerivative(int nodeIndex)
@@ -70,10 +91,7 @@ namespace NTDLS.Determinet
             {
                 return ActivationFunction.Derivative(Activations[nodeIndex]);
             }
-            else
-            {
-                return Activations[nodeIndex];
-            }
+            return Activations[nodeIndex];
         }
 
         internal void InstantiateActivationFunction()
@@ -81,10 +99,10 @@ namespace NTDLS.Determinet
             ActivationFunction = ActivationType switch
             {
                 DniActivationType.None => null,
-                DniActivationType.Identity => new DniIdentityFunction(ActivationParameters),
+                DniActivationType.Identity => new DniIdentityFunction(Parameters),
                 DniActivationType.ReLU => new DniReLUFunction(),
-                DniActivationType.PiecewiseLinear => new DniPiecewiseLinearFunction(ActivationParameters),
-                DniActivationType.Linear => new DniLinearFunction(ActivationParameters),
+                DniActivationType.PiecewiseLinear => new DniPiecewiseLinearFunction(Parameters),
+                DniActivationType.Linear => new DniLinearFunction(Parameters),
                 DniActivationType.Sigmoid => new DniSigmoidFunction(),
                 DniActivationType.Tanh => new DniTanhFunction(),
                 DniActivationType.LeakyReLU => new DniLeakyReLUFunction(),

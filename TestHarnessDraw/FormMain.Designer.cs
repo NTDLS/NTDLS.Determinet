@@ -28,6 +28,9 @@
         /// </summary>
         private void InitializeComponent()
         {
+            System.Windows.Forms.DataVisualization.Charting.ChartArea chartArea2 = new System.Windows.Forms.DataVisualization.Charting.ChartArea();
+            System.Windows.Forms.DataVisualization.Charting.Legend legend2 = new System.Windows.Forms.DataVisualization.Charting.Legend();
+            System.Windows.Forms.DataVisualization.Charting.Series series2 = new System.Windows.Forms.DataVisualization.Charting.Series();
             simpleDrawControl = new SimpleDrawControl();
             buttonClear = new Button();
             buttonLoadModel = new Button();
@@ -39,7 +42,9 @@
             labelConfidence = new Label();
             textBoxConfidence = new TextBox();
             labelSanitized = new Label();
+            chartPredictions = new System.Windows.Forms.DataVisualization.Charting.Chart();
             ((System.ComponentModel.ISupportInitialize)pictureBoxAiView).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)chartPredictions).BeginInit();
             SuspendLayout();
             // 
             // simpleDrawControl
@@ -142,11 +147,28 @@
             labelSanitized.TabIndex = 10;
             labelSanitized.Text = "Sanitized";
             // 
+            // chartPredictions
+            // 
+            chartArea2.Name = "ChartArea1";
+            chartPredictions.ChartAreas.Add(chartArea2);
+            legend2.Name = "Legend1";
+            chartPredictions.Legends.Add(legend2);
+            chartPredictions.Location = new Point(594, 16);
+            chartPredictions.Name = "chartPredictions";
+            series2.ChartArea = "ChartArea1";
+            series2.Legend = "Legend1";
+            series2.Name = "Series1";
+            chartPredictions.Series.Add(series2);
+            chartPredictions.Size = new Size(300, 300);
+            chartPredictions.TabIndex = 11;
+            chartPredictions.Text = "chartPredictions";
+            // 
             // FormMain
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(569, 480);
+            ClientSize = new Size(906, 480);
+            Controls.Add(chartPredictions);
             Controls.Add(labelSanitized);
             Controls.Add(labelConfidence);
             Controls.Add(textBoxConfidence);
@@ -165,6 +187,7 @@
             Text = "TestHarnessDraw";
             Load += Form1_Load;
             ((System.ComponentModel.ISupportInitialize)pictureBoxAiView).EndInit();
+            ((System.ComponentModel.ISupportInitialize)chartPredictions).EndInit();
             ResumeLayout(false);
             PerformLayout();
         }
@@ -182,5 +205,6 @@
         private Label labelConfidence;
         private TextBox textBoxConfidence;
         private Label labelSanitized;
+        private System.Windows.Forms.DataVisualization.Charting.Chart chartPredictions;
     }
 }

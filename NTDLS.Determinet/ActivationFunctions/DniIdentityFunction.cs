@@ -4,9 +4,7 @@ using NTDLS.Determinet.Types;
 namespace NTDLS.Determinet.ActivationFunctions
 {
     /// <summary>
-    /// An identity function is a function that returns the same value as its input. In machine learning, an identity
-    /// function is often used as a default activation function for a layer of a neural network. When used as an activation
-    /// function, an identity function simply passes the input through the layer unchanged.
+    /// Represents an identity activation function, which returns the input as the output without modification.
     /// </summary>
     public class DniIdentityFunction : IDniActivationFunction
     {

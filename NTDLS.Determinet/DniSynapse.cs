@@ -2,8 +2,14 @@
 
 namespace NTDLS.Determinet
 {
+    /// <summary>
+    /// Represents a synapse structure with weights and biases, supporting serialization and deserialization.
+    /// </summary>
+    /// <remarks>This class is designed to store and manage a two-dimensional array of weights and a
+    /// one-dimensional array of biases. It provides methods to prepare the data for serialization by flattening the
+    /// weights and to rebuild the two-dimensional weights array after deserialization. The class is compatible with
+    /// Protocol Buffers for efficient serialization.</remarks>
     [ProtoContract]
-
     public class DniSynapse
     {
         // Backing data used at runtime (fast access)

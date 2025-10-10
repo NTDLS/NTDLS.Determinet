@@ -2,6 +2,12 @@
 
 namespace NTDLS.Determinet
 {
+    /// <summary>
+    /// Represents the configuration for a deep neural network, including its layers, learning rate, and structure.
+    /// </summary>
+    /// <remarks>This class provides methods to define the input layer, intermediate layers, and output layer
+    /// of the network. The configuration must include exactly one input layer and one output layer, with any number of
+    /// intermediate layers.</remarks>
     public class DniConfiguration
     {
         private DniConfigurationLayer? _outputLayer;

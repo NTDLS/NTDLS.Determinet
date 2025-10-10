@@ -5,8 +5,14 @@ using ProtoBuf;
 namespace NTDLS.Determinet.ActivationFunctions
 {
     /// <summary>
-    /// Function that combines a linear segment for certain input range with a Leaky ReLU-like behavior for values outside that range. 
+    /// Represents a piecewise linear activation function with configurable slope and output range.
+    /// Combines a linear segment for certain input range with a Leaky ReLU-like behavior for values outside that range. 
     /// </summary>
+    /// <remarks>This activation function applies a linear transformation to input values based on the
+    /// specified range: - For inputs less than or equal to the minimum of the range, the output is scaled by the slope
+    /// value. - For inputs greater than or equal to the maximum of the range, the output is also scaled by the slope
+    /// value. - For inputs within the range, the output is equal to the input.  The derivative of the function is
+    /// constant outside the range (equal to the slope) and 1 within the range.</remarks>
     [ProtoContract]
     public class DniPiecewiseLinearFunction : IDniActivationFunction
     {

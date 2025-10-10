@@ -3,10 +3,11 @@
 namespace NTDLS.Determinet.ActivationFunctions
 {
     /// <summary>
-    /// The hyperbolic tangent function, or tanh for short, is a similar shaped nonlinear activation function that outputs values between -1.0 and 1.0.
-    /// In the later 1990s and through the 2000s, the tanh function was preferred over the sigmoid activation function as models that used it were
-    /// easier to train and often had better predictive performance.
+    /// Represents the hyperbolic tangent (tanh) activation function, commonly used in neural networks.
     /// </summary>
+    /// <remarks>This class provides methods to compute the activation and derivative of the tanh function.
+    /// The tanh function maps input values to the range [-1, 1], making it useful for normalizing data in neural
+    /// network layers. The derivative is used during backpropagation to compute gradients.</remarks>
     public class DniTanhFunction : IDniActivationFunction
     {
         public double[] Activation(double[] nodes)

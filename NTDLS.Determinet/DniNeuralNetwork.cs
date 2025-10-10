@@ -1,9 +1,18 @@
 ﻿using NTDLS.Determinet.ActivationFunctions;
 using NTDLS.Determinet.Types;
 using ProtoBuf;
+using System.IO.Compression;
 
 namespace NTDLS.Determinet
 {
+    /// <summary>
+    /// Represents a neural network designed for training and inference tasks.
+    /// </summary>
+    /// <remarks>The <see cref="DniNeuralNetwork"/> class provides functionality for creating, training, and
+    /// evaluating a neural network. It supports configurable input, hidden, and output layers, as well as various
+    /// activation functions and parameters. The network can be trained using backpropagation and gradient descent, and
+    /// it calculates loss using the cross-entropy method with SoftMax activation for classification tasks.  This class
+    /// also supports saving and loading the network's state to and from a file for persistence.</remarks>
     [ProtoContract]
     public class DniNeuralNetwork
     {
@@ -13,7 +22,7 @@ namespace NTDLS.Determinet
             set => State.LearningRate = value;
         }
 
-        [ProtoMember(2)] internal DniStateOfBeing State { get; private set; } = new();
+        [ProtoMember(2)] public DniStateOfBeing State { get; private set; } = new();
 
         public DniNeuralNetwork(DniConfiguration configuration)
         {
@@ -25,11 +34,11 @@ namespace NTDLS.Determinet
             //Add hidden layer(s).
             foreach (var layerConfig in configuration.IntermediateLayers)
             {
-                State.Layers.Add(new DniLayer(DniLayerType.Intermediate, layerConfig.Nodes, layerConfig.ActivationType, layerConfig.ActivationParameters));
+                State.Layers.Add(new DniLayer(DniLayerType.Intermediate, layerConfig.Nodes, layerConfig.ActivationType, layerConfig.Parameters));
             }
 
             //Add output layer.
-            State.Layers.Add(new DniLayer(DniLayerType.Output, configuration.OutputLayer.Nodes, configuration.OutputLayer.ActivationType, configuration.OutputLayer.ActivationParameters));
+            State.Layers.Add(new DniLayer(DniLayerType.Output, configuration.OutputLayer.Nodes, configuration.OutputLayer.ActivationType, configuration.OutputLayer.Parameters));
 
             InitializeWeightsAndBiases();
         }
@@ -84,7 +93,7 @@ namespace NTDLS.Determinet
                 layer.Activations = // Weighted sum
                      ActivateLayer(State.Layers[i - 1].Activations, State.Synapses[i - 1].Weights, State.Synapses[i - 1].Biases);
 
-                if (layer.ActivationParameters.Get("UseBatchNorm", false))
+                if (layer.Parameters.Get("UseBatchNorm", false))
                 {
                     BatchNormalize(layer);
                 }
@@ -109,8 +118,8 @@ namespace NTDLS.Determinet
             double variance = layer.Activations.Select(a => Math.Pow(a - mean, 2)).Average();
             double stdDev = Math.Sqrt(variance + 1e-8);
 
-            double gamma = layer.ActivationParameters.Get("BatchNormGamma", 1);  // scale
-            double beta = layer.ActivationParameters.Get("BatchNormBeta", 1); ;  // shift
+            double gamma = layer.Parameters.Get("BatchNormGamma", 1);  // scale
+            double beta = layer.Parameters.Get("BatchNormBeta", 1); ;  // shift
 
             for (int i = 0; i < layer.Activations.Length; i++)
                 layer.Activations[i] = gamma * ((layer.Activations[i] - mean) / stdDev) + beta;
@@ -260,13 +269,15 @@ namespace NTDLS.Determinet
                 synapse.PrepareForSerialization();
 
             using var fs = File.Create(filePath);
-            Serializer.Serialize(fs, State);
+            using var zip = new DeflateStream(fs, CompressionLevel.SmallestSize);
+            Serializer.Serialize(zip, State);
         }
 
         public static DniNeuralNetwork LoadFromFile(string filePath)
         {
             using var fs = File.OpenRead(filePath);
-            var state = Serializer.Deserialize<DniStateOfBeing>(fs);
+            using var zip = new DeflateStream(fs, CompressionMode.Decompress);
+            var state = Serializer.Deserialize<DniStateOfBeing>(zip);
 
             foreach (var synapse in state.Synapses)
                 synapse.RebuildAfterDeserialization();

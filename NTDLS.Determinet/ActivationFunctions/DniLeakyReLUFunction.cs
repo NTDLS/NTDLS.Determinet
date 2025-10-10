@@ -5,11 +5,12 @@ using ProtoBuf;
 namespace NTDLS.Determinet.ActivationFunctions
 {
     /// <summary>
-    /// Both ReLU and Leaky ReLU are activation functions used in neural networks. The main difference between them is that ReLU sets all negative
-    /// values to zero while Leaky ReLU allows a small, non-zero gradient for negative input values. This helps to avoid discarding potentially
-    /// important information and thus perform better than ReLU in scenarios where the data has a lot of noise or outliers1. ReLU is computationally
-    /// efficient and simpler than Leaky ReLU, which makes it more suitable for shallow architectures.
+    /// Represents the Leaky ReLU (Rectified Linear Unit) activation function, which introduces a small slope for
+    /// negative input values.
     /// </summary>
+    /// <remarks>The Leaky ReLU activation function is commonly used in neural networks to address the "dying
+    /// ReLU" problem by allowing a small, non-zero gradient for negative input values. The slope for negative values is
+    /// determined by the <see cref="Alpha"/> parameter.</remarks>
     public class DniLeakyReLUFunction : IDniActivationFunction
     {
         [ProtoMember(1)]

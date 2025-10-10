@@ -1,10 +1,16 @@
 ﻿using System.Diagnostics.CodeAnalysis;
-using System.IO.Compression;
 using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace NTDLS.Determinet
 {
+    /// <summary>
+    /// Provides a collection of utility methods and properties for common operations,  including random number
+    /// generation, array processing, checksum calculation,  probabilistic operations, and data
+    /// compression/decompression.
+    /// </summary>
+    /// <remarks>This static class includes methods for generating random values, calculating checksums, 
+    /// flipping coins with specified probabilities, and ensuring non-null values.</remarks>
     public static class DniUtility
     {
         private static Random? _random = null;
@@ -22,7 +28,7 @@ namespace NTDLS.Determinet
             }
         }
 
-        public static int GetIndexOfMaxValue(double[] values, out double confidence)
+        public static int IndexOfMaxValue(double[] values, out double confidence)
         {
             int maxIndex = 0;
             double maxValue = values[0];
@@ -125,28 +131,6 @@ namespace NTDLS.Determinet
                     throw new Exception(message);
                 }
             }
-        }
-
-        public static byte[] Compress(string data)
-        {
-            var byteArray = Encoding.UTF8.GetBytes(data);
-
-            using var compressedStream = new MemoryStream();
-            using (var gzipStream = new GZipStream(compressedStream, CompressionLevel.SmallestSize))
-            {
-                gzipStream.Write(byteArray, 0, byteArray.Length);
-            }
-            return compressedStream.ToArray();
-        }
-
-        public static string Decompress(byte[] compressedBytes)
-        {
-            using var compressedStream = new MemoryStream(compressedBytes);
-            using var gzipStream = new GZipStream(compressedStream, CompressionMode.Decompress);
-            using var decompressedStream = new MemoryStream();
-            gzipStream.CopyTo(decompressedStream);
-            var decompressedBytes = decompressedStream.ToArray();
-            return Encoding.UTF8.GetString(decompressedBytes);
         }
     }
 }

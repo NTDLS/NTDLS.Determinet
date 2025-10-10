@@ -3,10 +3,11 @@
 namespace NTDLS.Determinet.ActivationFunctions
 {
     /// <summary>
-    ///  The rectified linear activation function or ReLU for short is a piecewise linear function that will output the input directly
-    ///  if it is positive, otherwise, it will output zero. It has become the default activation function for many types of neural networks
-    ///  because a model that uses it is easier to train and often achieves better performance.
+    /// Represents the Rectified Linear Unit (ReLU) activation function, commonly used in neural networks.
     /// </summary>
+    /// <remarks>The ReLU function outputs the input value if it is greater than zero; otherwise, it outputs
+    /// zero. It is widely used in deep learning due to its simplicity and effectiveness in introducing
+    /// non-linearity.</remarks>
     public class DniReLUFunction : IDniActivationFunction
     {
         public double[] Activation(double[] nodes)

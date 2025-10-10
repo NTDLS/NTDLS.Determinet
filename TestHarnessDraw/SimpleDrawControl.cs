@@ -41,7 +41,7 @@ namespace TestHarnessDraw
                             color = Color.Black;
                         }
 
-                        using Pen thickPen = new Pen(color, 12)
+                        using var thickPen = new Pen(color, 25)
                         {
                             StartCap = LineCap.Round,
                             EndCap = LineCap.Round,
@@ -71,17 +71,20 @@ namespace TestHarnessDraw
             Invalidate();
         }
 
-        public void LoadFromFile(string filePath, int x = 0, int y = 0)
+        public void LoadImageFromFile(string filePath, int x = 0, int y = 0)
         {
-            using (Graphics g = Graphics.FromImage(drawingBitmap))
+            if (File.Exists(filePath))
             {
-                g.Clear(Color.White);
-            }
+                using (Graphics g = Graphics.FromImage(drawingBitmap))
+                {
+                    g.Clear(Color.White);
+                }
 
-            using (var loadedImage = new Bitmap(filePath))
-            {
-                using Graphics g = Graphics.FromImage(drawingBitmap);
-                g.DrawImage(loadedImage, x, y, loadedImage.Width, loadedImage.Height);
+                using (var loadedImage = new Bitmap(filePath))
+                {
+                    using Graphics g = Graphics.FromImage(drawingBitmap);
+                    g.DrawImage(loadedImage, x, y, loadedImage.Width, loadedImage.Height);
+                }
             }
 
             Invalidate();
