@@ -92,7 +92,7 @@
             pictureBoxAiView.BackgroundImageLayout = ImageLayout.None;
             pictureBoxAiView.Location = new Point(230, 216);
             pictureBoxAiView.Name = "pictureBoxAiView";
-            pictureBoxAiView.Size = new Size(28, 28);
+            pictureBoxAiView.Size = new Size(82, 78);
             pictureBoxAiView.SizeMode = PictureBoxSizeMode.StretchImage;
             pictureBoxAiView.TabIndex = 5;
             pictureBoxAiView.TabStop = false;
@@ -112,7 +112,7 @@
             label1.AutoSize = true;
             label1.Location = new Point(128, 16);
             label1.Name = "label1";
-            label1.Size = new Size(273, 15);
+            label1.Size = new Size(272, 15);
             label1.TabIndex = 7;
             label1.Text = "<- Load a trained model and then draw in the box.";
             // 

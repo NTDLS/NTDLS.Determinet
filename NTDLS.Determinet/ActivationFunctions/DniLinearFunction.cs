@@ -1,38 +1,27 @@
-﻿using Newtonsoft.Json;
-using NTDLS.Determinet.ActivationFunctions.Interfaces;
+﻿using NTDLS.Determinet.ActivationFunctions.Interfaces;
 using NTDLS.Determinet.Types;
+using ProtoBuf;
 
 namespace NTDLS.Determinet.ActivationFunctions
 {
     /// <summary>
     /// Linear bounded activation function.
     /// </summary>
+    [ProtoContract]
     public class DniLinearFunction : IDniActivationFunction
     {
-        // linear slope value
-        private double _alpha;
+        [ProtoMember(1)]
+        public double Alpha { get; private set; } //Linear slope value.
 
-        // function output range
-        private DniRange _range;
-
-        [JsonProperty]
-        public double Alpha //Linear slope value.
-        {
-            get { return _alpha; }
-        }
-
-        [JsonProperty]
-        public DniRange Range //Function output range.
-        {
-            get { return _range; }
-        }
+        [ProtoMember(2)]
+        public DniRange Range { get; private set; }//Function output range.
 
         public DniLinearFunction(DniNamedFunctionParameters? param)
         {
             if (param == null) throw new ArgumentNullException(nameof(param));
 
-            _alpha = param.Get<double>("Alpha", 1);
-            _range = param.Get("Range", new DniRange(-1, +1));
+            Alpha = param.Get<double>("Alpha", 1);
+            Range = param.Get("Range", new DniRange(-1, +1));
         }
 
         public double[] Activation(double[] nodes)
@@ -41,15 +30,15 @@ namespace NTDLS.Determinet.ActivationFunctions
 
             foreach (var node in nodes)
             {
-                double y = _alpha * node;
+                double y = Alpha * node;
 
-                if (y > _range.Max)
+                if (y > Range.Max)
                 {
-                    result.Add(_range.Max);
+                    result.Add(Range.Max);
                 }
-                else if (y < _range.Min)
+                else if (y < Range.Min)
                 {
-                    result.Add(_range.Min);
+                    result.Add(Range.Min);
                 }
                 else
                 {
@@ -62,13 +51,13 @@ namespace NTDLS.Determinet.ActivationFunctions
 
         public double Derivative(double x)
         {
-            double y = _alpha * x;
+            double y = Alpha * x;
 
-            if (y <= _range.Min || y >= _range.Max)
+            if (y <= Range.Min || y >= Range.Max)
             {
                 return 0;
             }
-            return _alpha;
+            return Alpha;
         }
     }
 }

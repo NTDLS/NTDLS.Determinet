@@ -1,23 +1,21 @@
-﻿using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
-using NTDLS.Determinet.ActivationFunctions;
+﻿using NTDLS.Determinet.ActivationFunctions;
 using NTDLS.Determinet.ActivationFunctions.Interfaces;
 using NTDLS.Determinet.Types;
+using ProtoBuf;
 
 namespace NTDLS.Determinet
 {
+    [ProtoContract]
     internal class DniLayer
     {
-        public DniLayerType LayerType { get; set; }
-        [JsonIgnore]
+        [ProtoMember(1)] public DniLayerType LayerType { get; set; }
+
         public double[] Activations { get; set; }
-        public int NodeCount { get; set; }
+        [ProtoMember(2)] public int NodeCount { get; set; }
         public DniNamedFunctionParameters ActivationParameters { get; set; }
 
-        [JsonConverter(typeof(StringEnumConverter))]
-        public DniActivationType ActivationType { get; set; }
+        [ProtoMember(3)] public DniActivationType ActivationType { get; set; }
 
-        [JsonIgnore]
         public IDniActivationFunction? ActivationFunction { get; internal set; }
 
         public DniLayer(DniLayerType layerType, int nodeCount, DniActivationType activationType, DniNamedFunctionParameters activationParameters)

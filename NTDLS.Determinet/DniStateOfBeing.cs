@@ -1,8 +1,13 @@
-﻿namespace NTDLS.Determinet
+﻿using ProtoBuf;
+
+namespace NTDLS.Determinet
 {
+    [ProtoContract]
+
     internal class DniStateOfBeing
     {
-        public List<DniLayer> Layers { get; set; } = new();
-        public List<DniSynapse> Synapses { get; set; } = new();
+        [ProtoMember(1)] public double LearningRate { get; set; }
+        [ProtoMember(2)] public List<DniLayer> Layers { get; set; } = new();
+        [ProtoMember(3)] public List<DniSynapse> Synapses { get; set; } = new();
     }
 }

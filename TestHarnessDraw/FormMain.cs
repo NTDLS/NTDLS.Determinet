@@ -1,11 +1,12 @@
 using NTDLS.Determinet;
-using System.Windows.Forms;
 
 namespace TestHarnessDraw
 {
     public partial class FormMain : Form
     {
         private DniNeuralNetwork? _dni;
+        const int _imageWidth = 64;              // Downscale for faster processing with minimal quality loss.
+        const int _imageHeight = 64;             // Downscale for faster processing with minimal quality loss.
 
         public FormMain()
         {
@@ -22,7 +23,7 @@ namespace TestHarnessDraw
 
             timer.Tick += Timer_Tick;
 
-            var debugModelFile = @"C:\NTDLS\NTDLS.Determinet\TestHarness\bin\Release\net8.0\trained.gz";
+            var debugModelFile = @"C:\NTDLS\NTDLS.Determinet\TestHarness\bin\Release\net9.0\trained.dni";
             if (File.Exists(debugModelFile))
             {
                 _dni = DniNeuralNetwork.LoadFromFile(debugModelFile);
@@ -31,11 +32,12 @@ namespace TestHarnessDraw
 
         private void Timer_Tick(object? sender, EventArgs e)
         {
-            if (_dni != null)
+            var inputBits = GetImageGrayscaleBytes(_imageWidth, _imageHeight);
+
+            if (_dni != null && inputBits != null)
             {
                 try
                 {
-                    var inputBits = GetImageGrayscaleBytes();
                     var detectedValue = DniUtility.GetIndexOfMaxValue(_dni.Forward(inputBits), out var confidence);
                     textBoxDetected.Text = detectedValue.ToString();
                     textBoxConfidence.Text = $"{confidence:n4}";
@@ -46,20 +48,20 @@ namespace TestHarnessDraw
             }
         }
 
-        private double[] GetImageGrayscaleBytes(int resizeWidth = 28, int resizeHeight = 28)
+        private double[]? GetImageGrayscaleBytes(int resizeWidth, int resizeHeight)
         {
             var bitmap = simpleDrawControl.GetDrawingBitmap();
 
-            // Convert the bitmap to grayscale
             int left = bitmap.Width, right = 0, top = bitmap.Height, bottom = 0;
+            int threshold = 250;
 
-            // Loop through pixels to find non-white areas for cropping
+            // Detect non-white pixels
             for (int y = 0; y < bitmap.Height; y++)
             {
                 for (int x = 0; x < bitmap.Width; x++)
                 {
                     Color pixel = bitmap.GetPixel(x, y);
-                    if (pixel.R < 255 || pixel.G < 255 || pixel.B < 255) // Adjust for your background color
+                    if (pixel.R < threshold || pixel.G < threshold || pixel.B < threshold)
                     {
                         if (x < left) left = x;
                         if (x > right) right = x;
@@ -69,39 +71,65 @@ namespace TestHarnessDraw
                 }
             }
 
-            // Define bounding box for cropping
-            int width = right - left + 1;
-            int height = bottom - top + 1;
-            var bounds = new Rectangle(left, top, width, height);
+            // Blank drawing detection
+            if (right <= left || bottom <= top)
+            {
+                pictureBoxAiView.Image = null;
+                return null;
+            }
 
-            // Crop to the bounding box
-            Bitmap croppedBitmap = bitmap.Clone(bounds, bitmap.PixelFormat);
+            // Add margin and clamp
+            int margin = 5;
+            int cropLeft = Math.Max(0, left - margin);
+            int cropTop = Math.Max(0, top - margin);
+            int cropRight = Math.Min(bitmap.Width - 1, right + margin);
+            int cropBottom = Math.Min(bitmap.Height - 1, bottom + margin);
+            int cropWidth = cropRight - cropLeft + 1;
+            int cropHeight = cropBottom - cropTop + 1;
 
-            // Resize the cropped image
-            Bitmap resizedBitmap = new Bitmap(croppedBitmap, new Size(resizeWidth, resizeHeight));
+            // Crop region of interest
+            Rectangle bounds = new Rectangle(cropLeft, cropTop, cropWidth, cropHeight);
+            using var cropped = bitmap.Clone(bounds, bitmap.PixelFormat);
 
-            pictureBoxAiView.Image = resizedBitmap.Clone() as Bitmap;
+            // Center in square canvas
+            int squareSize = Math.Max(cropWidth, cropHeight);
+            using var squareCanvas = new Bitmap(squareSize, squareSize);
 
+            using (Graphics g = Graphics.FromImage(squareCanvas))
+            {
+                g.Clear(Color.White);
+                g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+                g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+
+                int offsetX = (squareSize - cropWidth) / 2;
+                int offsetY = (squareSize - cropHeight) / 2;
+
+                g.DrawImage(cropped, offsetX, offsetY, cropWidth, cropHeight);
+            }
+
+            // Resize to target network input
+            using var resized = new Bitmap(squareCanvas, new Size(resizeWidth, resizeHeight));
+
+            // Visualize what the network sees
+            pictureBoxAiView.Image = (Bitmap)resized.Clone();
+
+            // Convert to grayscale normalized [0..1], 0 = black, 1 = white
             double[] pixelData = new double[resizeWidth * resizeHeight];
             int index = 0;
 
-            // Process each pixel to get grayscale values normalized to 0-1
-            for (int y = 0; y < resizedBitmap.Height; y++)
+            for (int y = 0; y < resizeHeight; y++)
             {
-                for (int x = 0; x < resizedBitmap.Width; x++)
+                for (int x = 0; x < resizeWidth; x++)
                 {
-                    Color pixel = resizedBitmap.GetPixel(x, y);
-                    byte grayValue = (byte)(0.299 * pixel.R + 0.587 * pixel.G + 0.114 * pixel.B);
-                    pixelData[index++] = grayValue / 255.0; // Scale to 0-1
+                    Color p = resized.GetPixel(x, y);
+                    double gray = (0.299 * p.R + 0.587 * p.G + 0.114 * p.B) / 255.0;
+                    pixelData[index++] = gray;
                 }
             }
 
-            // Clean up resources
-            croppedBitmap.Dispose();
-            resizedBitmap.Dispose();
-
             return pixelData;
         }
+
 
         private void ButtonClear_Click(object sender, EventArgs e)
         {
@@ -111,7 +139,7 @@ namespace TestHarnessDraw
         private void ButtonLoadModel_Click(object sender, EventArgs e)
         {
             using var openFileDialog = new OpenFileDialog();
-            openFileDialog.Filter = "Gz Files (*.gz)|*.gz|All Files (*.*)|*.*";
+            openFileDialog.Filter = "DNI Files (*.dni)|*.dni|All Files (*.*)|*.*";
             openFileDialog.FilterIndex = 1;
             openFileDialog.Multiselect = false;
             openFileDialog.RestoreDirectory = true;

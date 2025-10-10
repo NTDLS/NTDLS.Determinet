@@ -1,4 +1,6 @@
-﻿namespace TestHarnessDraw
+﻿using System.Drawing.Drawing2D;
+
+namespace TestHarnessDraw
 {
     public partial class SimpleDrawControl : UserControl
     {
@@ -39,7 +41,12 @@
                             color = Color.Black;
                         }
 
-                        using Pen thickPen = new Pen(color, 5);
+                        using Pen thickPen = new Pen(color, 12)
+                        {
+                            StartCap = LineCap.Round,
+                            EndCap = LineCap.Round,
+                            LineJoin = LineJoin.Round
+                        };
                         g.DrawLine(thickPen, lastPoint, e.Location);
 
                         // Draw a circle at the current point to fill gaps

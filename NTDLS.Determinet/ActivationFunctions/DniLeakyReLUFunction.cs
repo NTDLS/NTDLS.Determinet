@@ -12,12 +12,23 @@ namespace NTDLS.Determinet.ActivationFunctions
     {
         public double[] Activation(double[] nodes)
         {
-            return nodes.Select(o=> (0 >= o) ? 0.01f * o : o).ToArray();
+            double[] result = new double[nodes.Length];
+            for (int i = 0; i < nodes.Length; i++)
+            {
+                double x = nodes[i];
+                if (double.IsNaN(x) || double.IsInfinity(x))
+                    x = 0; // neutralize bad input
+
+                result[i] = x <= 0 ? 0.01 * x : x;
+            }
+            return result;
         }
 
         public double Derivative(double x)
         {
-            return (0 >= x) ? 0.01f : 1;
+            if (double.IsNaN(x) || double.IsInfinity(x))
+                return 0;
+            return x <= 0 ? 0.01 : 1.0;
         }
     }
 }

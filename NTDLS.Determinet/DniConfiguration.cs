@@ -6,7 +6,7 @@ namespace NTDLS.Determinet
     {
         private DniConfigurationLayer? _outputLayer;
 
-        public double LearningRate { get; set; } = 0.01;
+        public double LearningRate { get; set; }
         public int InputNodes { get; private set; }
         public DniConfigurationLayer OutputLayer => _outputLayer ?? throw new Exception("Output layer is not defined.");
         public List<DniConfigurationLayer> IntermediateLayers { get; set; } = new();

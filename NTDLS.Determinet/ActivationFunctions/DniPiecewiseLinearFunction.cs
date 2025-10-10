@@ -1,25 +1,21 @@
-﻿using Newtonsoft.Json;
-using NTDLS.Determinet.ActivationFunctions.Interfaces;
+﻿using NTDLS.Determinet.ActivationFunctions.Interfaces;
 using NTDLS.Determinet.Types;
+using ProtoBuf;
 
 namespace NTDLS.Determinet.ActivationFunctions
 {
     /// <summary>
     /// Function that combines a linear segment for certain input range with a Leaky ReLU-like behavior for values outside that range. 
     /// </summary>
+    [ProtoContract]
     public class DniPiecewiseLinearFunction : IDniActivationFunction
     {
-        /// <summary>
-        /// Linear slope value.
-        /// </summary>
-        [JsonProperty]
-        public double Alpha { get; set; }
+        [ProtoMember(1)]
+        public double Alpha { get; private set; } //Linear slope value.
 
-        /// <summary>
-        /// Function output range.
-        /// </summary>
-        [JsonProperty]
-        public DniRange Range { get; set; }
+        [ProtoMember(2)]
+        public DniRange Range { get; private set; }//Function output range.
+
 
         public DniPiecewiseLinearFunction(DniNamedFunctionParameters? param)
         {

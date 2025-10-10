@@ -1,17 +1,23 @@
-﻿using Newtonsoft.Json;
-using NTDLS.Determinet.ActivationFunctions;
+﻿using NTDLS.Determinet.ActivationFunctions;
 using NTDLS.Determinet.Types;
+using ProtoBuf;
 
 namespace NTDLS.Determinet
 {
+    [ProtoContract]
     public class DniNeuralNetwork
     {
-        public double LearningRate { get; set; }
-        internal DniStateOfBeing State { get; private set; } = new();
+        public double LearningRate
+        {
+            get => State.LearningRate;
+            set => State.LearningRate = value;
+        }
+
+        [ProtoMember(2)] internal DniStateOfBeing State { get; private set; } = new();
 
         public DniNeuralNetwork(DniConfiguration configuration)
         {
-            LearningRate = configuration.LearningRate;
+            State.LearningRate = configuration.LearningRate;
 
             //Add input layer.
             State.Layers.Add(new DniLayer(DniLayerType.Input, configuration.InputNodes, new()));
@@ -90,14 +96,26 @@ namespace NTDLS.Determinet
 
             for (int j = 0; j < layerSize; j++)
             {
-                output[j] = biases[j];
+                double sum = biases[j];
+
                 for (int i = 0; i < inputs.Length; i++)
                 {
-                    output[j] += inputs[i] * weights[i, j];
+                    double v = inputs[i] * weights[i, j];
+
+                    if (double.IsNaN(v) || double.IsInfinity(v))
+                        v = 0; // neutralize bad math
+
+                    sum += v;
                 }
+
+                // prevent overflow from huge weights
+                sum = Math.Clamp(sum, -1e6, 1e6);
+                output[j] = sum;
             }
+
             return output;
         }
+
 
         /// <summary>
         /// Cross-entropy loss derivative, used for SoftMax output activation function.
@@ -164,20 +182,18 @@ namespace NTDLS.Determinet
                 {
                     for (int k = 0; k < State.Synapses[i].Weights.GetLength(1); k++)
                     {
-                        State.Synapses[i].Weights[j, k] -= LearningRate * errors[i][k] * State.Layers[i].Activations[j];
+                        State.Synapses[i].Weights[j, k] -= State.LearningRate * errors[i][k] * State.Layers[i].Activations[j];
                     }
                 }
 
                 for (int j = 0; j < State.Synapses[i].Biases.Length; j++)
                 {
-                    State.Synapses[i].Biases[j] -= LearningRate * errors[i][j];
+                    State.Synapses[i].Biases[j] -= State.LearningRate * errors[i][j];
                 }
             }
         }
 
-        /// <summary>
-        /// Training function for single epoch.
-        /// </summary>
+        /*
         public double Train(double[] inputs, double[] outputs)
         {
             // Forward pass to get the prediction
@@ -191,52 +207,60 @@ namespace NTDLS.Determinet
 
             return loss;
         }
+        */
 
         /// <summary>
-        /// Training function for multiple epochs.
+        /// Training function for single epoch.
+        /// Returns loss with SoftMax + cross-entropy,
+        /// The loss is a measure of how surprised the model is by the correct answer.
         /// </summary>
-        public double Train(double[] inputs, double[] outputs, int epochs)
+        public double Train(double[] inputs, double[] expected)
         {
-            double loss = 0.0;
+            if (State.LearningRate <= 0)
+                throw new Exception("Learning rate must be greater than zero.");
 
-            for (int epoch = 0; epoch < epochs; epoch++)
-            {
-                // Forward pass to get the prediction
-                var predictions = Forward(inputs);
+            var predictions = Forward(inputs);
 
-                // Calculate and accumulate the loss
-                loss = -Math.Log(predictions[Array.IndexOf(outputs, 1.0)]);
+            // Compute numerically-stable loss
+            double loss = CrossEntropy(predictions, expected);
 
-                // Perform backpropagation to update weights
-                Backpropagate(inputs, outputs);
-            }
-
-            // Return the final loss after all epochs
+            Backpropagate(inputs, expected);
             return loss;
         }
 
-        public void SaveToFile(string fileName)
+        private static double CrossEntropy(double[] predicted, double[] expected)
         {
-            var jsonText = JsonConvert.SerializeObject(State, Formatting.Indented);
-            File.WriteAllBytes(fileName, DniUtility.Compress(jsonText));
+            const double EPS = 1e-12; // prevent log(0)
+            double loss = 0.0;
+            for (int i = 0; i < expected.Length; i++)
+            {
+                double p = Math.Clamp(predicted[i], EPS, 1.0 - EPS);
+                loss -= expected[i] * Math.Log(p);
+            }
+            return loss;
         }
 
-        public static DniNeuralNetwork LoadFromFile(string fileName)
+        public void SaveToFile(string filePath)
         {
-            var jsonText = DniUtility.Decompress(File.ReadAllBytes(fileName));
+            foreach (var synapse in State.Synapses)
+                synapse.PrepareForSerialization();
 
-            var state = JsonConvert.DeserializeObject<DniStateOfBeing>(jsonText)
-                ?? throw new Exception("Failed to deserialize the network.");
+            using var fs = File.Create(filePath);
+            Serializer.Serialize(fs, State);
+        }
+
+        public static DniNeuralNetwork LoadFromFile(string filePath)
+        {
+            using var fs = File.OpenRead(filePath);
+            var state = Serializer.Deserialize<DniStateOfBeing>(fs);
+
+            foreach (var synapse in state.Synapses)
+                synapse.RebuildAfterDeserialization();
 
             foreach (var layer in state.Layers)
-            {
                 layer.InstantiateActivationFunction();
-            }
 
-            return new DniNeuralNetwork()
-            {
-                State = state
-            };
+            return new DniNeuralNetwork { State = state };
         }
     }
 }

@@ -3,167 +3,304 @@ using NTDLS.Determinet.Types;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
+using System.Collections.Concurrent;
 
 namespace TestHarness
 {
     internal class Program
     {
-        const int _imageWidth = 28;
-        const int _imageHeight = 28;
-        const int _outputNodes = 10; //10 values because we are working with digits with 10 possible outputs.
+        const double _initialLearningRate = 0.0005; // Starting learning rate for training.
+        const double _convergence = 0.000000001;    // Threshold for considering the training has converged.
+        const int _patience = 3;                    // Number of epochs to wait before reducing learning rate once cost starts increasing or reaches a plateau.
+        const double _decayFactor = 0.5;            // Factor to reduce learning rate
+        const int _trainingEpochs = 250;            // Total number of training epochs
+        const int _imageWidth = 64;                 // Downscale for faster processing with minimal quality loss.
+        const int _imageHeight = 64;                // Downscale for faster processing with minimal quality loss.
+        const int _outputNodes = 62;                // 10 digits + 26 lowercase + 26 uppercase letters
+        const double _minDelta = 0.001;             // minimum improvement threshold
+        const int _cooldown = 2;                    // epochs to wait after each decay
+        const int _earlyStopPatience = 10;          // epochs with no improvement before stopping
+        const int _earlyStopMinEpochs = 10;         // minimum epochs before we even consider stopping
 
         static void Main()
         {
-            var trainedModelFilename = "trained.gz";
+            var trainedModelFilename = "trained.dni";
 
             //File.Delete(trainedModelFilename);
 
-            DniNeuralNetwork dni;
-            if (File.Exists(trainedModelFilename))
-            {
-                dni = TrainAndSave(trainedModelFilename);
+            DniNeuralNetwork dni = TrainAndSave(trainedModelFilename);
 
-                dni = DniNeuralNetwork.LoadFromFile(trainedModelFilename)
-                    ?? throw new Exception("Failed to load the network from file.");
-            }
-            else
-            {
-                dni = TrainAndSave(trainedModelFilename);
-            }
-
+            /*
             int outputNode = 0;
             double confidence = 0;
 
-            outputNode = DniUtility.GetIndexOfMaxValue(dni.Forward(GetImageGrayscaleBytes(@"C:\Users\ntdls\Desktop\digit\0\30_00010.png")), out confidence);
+            outputNode = DniUtility.GetIndexOfMaxValue(dni.Forward(GetImageGrayscaleBytes(@"C:\NTDLS\NTDLS.Determinet\Training Characters\0 (1).png", _imageWidth, _imageHeight)), out confidence);
             Console.WriteLine($"Expected: 0: Result: {outputNode:n0}, confidence: {confidence:n4}");
-            outputNode = DniUtility.GetIndexOfMaxValue(dni.Forward(GetImageGrayscaleBytes(@"C:\Users\ntdls\Desktop\digit\1\31_00010.png")), out confidence);
+            outputNode = DniUtility.GetIndexOfMaxValue(dni.Forward(GetImageGrayscaleBytes(@"C:\NTDLS\NTDLS.Determinet\Training Characters\1 (1).png", _imageWidth, _imageHeight)), out confidence);
             Console.WriteLine($"Expected: 1: Result: {outputNode:n0}, confidence: {confidence:n4}");
-            outputNode = DniUtility.GetIndexOfMaxValue(dni.Forward(GetImageGrayscaleBytes(@"C:\Users\ntdls\Desktop\digit\2\32_00010.png")), out confidence);
+            outputNode = DniUtility.GetIndexOfMaxValue(dni.Forward(GetImageGrayscaleBytes(@"C:\NTDLS\NTDLS.Determinet\Training Characters\2 (1).png", _imageWidth, _imageHeight)), out confidence);
             Console.WriteLine($"Expected: 2: Result: {outputNode:n0}, confidence: {confidence:n4}");
-            outputNode = DniUtility.GetIndexOfMaxValue(dni.Forward(GetImageGrayscaleBytes(@"C:\Users\ntdls\Desktop\digit\3\33_00010.png")), out confidence);
+            outputNode = DniUtility.GetIndexOfMaxValue(dni.Forward(GetImageGrayscaleBytes(@"C:\NTDLS\NTDLS.Determinet\Training Characters\3 (1).png", _imageWidth, _imageHeight)), out confidence);
             Console.WriteLine($"Expected: 3: Result: {outputNode:n0}, confidence: {confidence:n4}");
-            outputNode = DniUtility.GetIndexOfMaxValue(dni.Forward(GetImageGrayscaleBytes(@"C:\Users\ntdls\Desktop\digit\4\34_00010.png")), out confidence);
+            outputNode = DniUtility.GetIndexOfMaxValue(dni.Forward(GetImageGrayscaleBytes(@"C:\NTDLS\NTDLS.Determinet\Training Characters\4 (1).png", _imageWidth, _imageHeight)), out confidence);
             Console.WriteLine($"Expected: 4: Result: {outputNode:n0}, confidence: {confidence:n4}");
-            outputNode = DniUtility.GetIndexOfMaxValue(dni.Forward(GetImageGrayscaleBytes(@"C:\Users\ntdls\Desktop\digit\5\35_00010.png")), out confidence);
+            outputNode = DniUtility.GetIndexOfMaxValue(dni.Forward(GetImageGrayscaleBytes(@"C:\NTDLS\NTDLS.Determinet\Training Characters\5 (1).png", _imageWidth, _imageHeight)), out confidence);
             Console.WriteLine($"Expected: 5: Result: {outputNode:n0}, confidence: {confidence:n4}");
-            outputNode = DniUtility.GetIndexOfMaxValue(dni.Forward(GetImageGrayscaleBytes(@"C:\Users\ntdls\Desktop\digit\6\36_00010.png")), out confidence);
+            outputNode = DniUtility.GetIndexOfMaxValue(dni.Forward(GetImageGrayscaleBytes(@"C:\NTDLS\NTDLS.Determinet\Training Characters\6 (1).png", _imageWidth, _imageHeight)), out confidence);
             Console.WriteLine($"Expected: 6: Result: {outputNode:n0}, confidence: {confidence:n4}");
-            outputNode = DniUtility.GetIndexOfMaxValue(dni.Forward(GetImageGrayscaleBytes(@"C:\Users\ntdls\Desktop\digit\7\37_00010.png")), out confidence);
+            outputNode = DniUtility.GetIndexOfMaxValue(dni.Forward(GetImageGrayscaleBytes(@"C:\NTDLS\NTDLS.Determinet\Training Characters\7 (1).png", _imageWidth, _imageHeight)), out confidence);
             Console.WriteLine($"Expected: 7: Result: {outputNode:n0}, confidence: {confidence:n4}");
-            outputNode = DniUtility.GetIndexOfMaxValue(dni.Forward(GetImageGrayscaleBytes(@"C:\Users\ntdls\Desktop\digit\8\38_00010.png")), out confidence);
+            outputNode = DniUtility.GetIndexOfMaxValue(dni.Forward(GetImageGrayscaleBytes(@"C:\NTDLS\NTDLS.Determinet\Training Characters\8 (1).png", _imageWidth, _imageHeight)), out confidence);
             Console.WriteLine($"Expected: 8: Result: {outputNode:n0}, confidence: {confidence:n4}");
-            outputNode = DniUtility.GetIndexOfMaxValue(dni.Forward(GetImageGrayscaleBytes(@"C:\Users\ntdls\Desktop\digit\9\39_00010.png")), out confidence);
+            outputNode = DniUtility.GetIndexOfMaxValue(dni.Forward(GetImageGrayscaleBytes(@"C:\NTDLS\NTDLS.Determinet\Training Characters\9 (1).png", _imageWidth, _imageHeight)), out confidence);
             Console.WriteLine($"Expected: 9: Result: {outputNode:n0}, confidence: {confidence:n4}");
-        }
-
-        /// <summary>
-        /// Gets a random training model from the list that has not yet been fed-in for the current training epoch.
-        /// Increments the training epoch for the random model.
-        /// </summary>
-        private static TrainingModel? GetRandomTrainingModel(List<TrainingModel> models, int epoch)
-        {
-            var modelsThisEpoch = models.Where(o => o.Epoch == epoch).ToList();
-
-            if (modelsThisEpoch.Count == 0)
-            {
-                return null;
-            }
-
-            int randomIndex = DniUtility.Random.Next(modelsThisEpoch.Count);
-            var randomModel = modelsThisEpoch[randomIndex];
-
-            randomModel.Epoch++;
-
-            return randomModel;
+            */
         }
 
         private static List<TrainingModel> LoadTrainingModels(string path)
         {
             var trainingModels = new List<TrainingModel>();
 
-            var digitFolders = Directory.GetDirectories(path);
-            foreach (var digitFolder in digitFolders)
+            var imagePaths = Directory.EnumerateFiles(path, "*.png");
+
+            var distinctCharacters = new char[] {
+                '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
+                'a', 'b', 'c', 'd', 'e', 'f','g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
+                'A', 'B', 'C', 'D', 'E', 'F','G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'
+            };
+
+            int charIndex = 0;
+
+            var layerExpectations = new Dictionary<char, double[]>();
+            foreach (var character in distinctCharacters)
             {
-                var imagePaths = Directory.GetFiles(digitFolder, "*.png");
-
-                //Use the name of the folder as the expected output character for training.
-                var outputCharacter = digitFolder[digitFolder.Length - 1];
-
-                //Create the expected output layer:
                 var outputs = new double[_outputNodes];
-                outputs[outputCharacter - 48] = 1;
+                outputs[charIndex++] = 1;
+                layerExpectations[character] = outputs;
+            }
 
-                foreach (var imagePath in imagePaths)
-                {
-                    trainingModels.Add(new(imagePath, outputs));
-                }
+            foreach (var imagePath in imagePaths)
+            {
+                var fileName = Path.GetFileName(imagePath);
+                //Use the first character of the image filename as the expected output character:
+                var layerExpectation = layerExpectations[fileName[0]];
+                trainingModels.Add(new(imagePath, layerExpectation));
             }
 
             return trainingModels;
         }
 
+
+        private static readonly Lock _lockGetRandomTrainingModel = new();
+        /// <summary>
+        /// Gets a random training model from the list that has not yet been fed-in for the current training epoch.
+        /// Increments the training epoch for the random model.
+        /// </summary>
+        private static TrainingModel? GetRandomTrainingModel(List<TrainingModel> models, int epoch)
+        {
+            lock (_lockGetRandomTrainingModel)
+            {
+                var modelsThisEpoch = models.Where(o => o.Epoch == epoch).ToList();
+
+                if (modelsThisEpoch.Count == 0)
+                {
+                    return null;
+                }
+
+                int randomIndex = DniUtility.Random.Next(modelsThisEpoch.Count);
+                var randomModel = modelsThisEpoch[randomIndex];
+
+                //Once we have consumed a model for this epoch, increment its epoch so we don't use it again this epoch:
+                randomModel.Epoch++;
+
+                return randomModel;
+            }
+        }
+
+        class BacklogModel
+        {
+            public TrainingModel Model { get; set; }
+            public double[] Bits { get; set; }
+
+            public BacklogModel(TrainingModel model)
+            {
+                Model = model;
+                Bits = GetImageGrayscaleBytes(model.FileName, _imageWidth, _imageHeight);
+            }
+        }
+
         static DniNeuralNetwork TrainAndSave(string trainedModelFilename)
         {
-            var configuration = new DniConfiguration();
-            configuration.AddInputLayer(_imageWidth * _imageHeight);
-            configuration.AddIntermediateLayer(280, DniActivationType.LeakyReLU);
+            DniNeuralNetwork dni;
 
-            /*//Example of adding parameters for a layer activation function:
-            var piecewiseLinearParam = new DniNamedFunctionParameters();
-            piecewiseLinearParam.Set("alpha", 1);
-            piecewiseLinearParam.Set("range", new DniRange(-10, 10));
-            configuration.AddIntermediateLayer(280, DniActivationType.PiecewiseLinear, piecewiseLinearParam);
-            */
+            if (File.Exists(trainedModelFilename))
+            {
+                dni = DniNeuralNetwork.LoadFromFile(trainedModelFilename)
+                    ?? throw new Exception("Failed to load the network from file.");
+            }
+            else
+            {
+                var configuration = new DniConfiguration();
 
-            configuration.AddOutputLayer(_outputNodes, DniActivationType.SoftMax);
+                /*
+                | Layer    | Role                                     | Notes                                                                              |
+                | -------- | ---------------------------------------- | ---------------------------------------------------------------------------------- |
+                | Input    | `_imageWidth * _imageHeight` (130x130)   | Flattened grayscale image. Normalize pixel values to [0, 1] or z-score per sample. |
+                | Hidden 1 | 512 → LeakyReLU                          | Enough capacity to learn non-linear stroke patterns.                               |
+                | Hidden 2 | 256 → LeakyReLU                          | Tapering keeps parameter count reasonable; aids generalization.                    |
+                | Hidden 3 | 128 → LeakyReLU                          | Distills features before classification.                                           |
+                | Output   | 62 → Softmax                             | One neuron per symbol (0-9, A-Z, a-z).                                             |
+                */
 
-            var dni = new DniNeuralNetwork(configuration);
+                configuration.AddInputLayer(_imageWidth * _imageHeight);
+
+                //MLPs: 2–3 hidden layers, 128–512 units each, tapering (512, 256, 128).
+                configuration.AddIntermediateLayer(512, DniActivationType.LeakyReLU);
+                configuration.AddIntermediateLayer(256, DniActivationType.LeakyReLU);
+                configuration.AddIntermediateLayer(128, DniActivationType.LeakyReLU);
+
+                /*//Example of adding parameters for a layer activation function:
+                var piecewiseLinearParam = new DniNamedFunctionParameters();
+                piecewiseLinearParam.Set("alpha", 1);
+                piecewiseLinearParam.Set("range", new DniRange(-10, 10));
+                configuration.AddIntermediateLayer(280, DniActivationType.PiecewiseLinear, piecewiseLinearParam);
+                */
+
+                configuration.AddOutputLayer(_outputNodes, DniActivationType.SoftMax);
+
+                dni = new DniNeuralNetwork(configuration);
+            }
 
             Console.WriteLine($"Loading image paths...");
-            var trainingModels = LoadTrainingModels(@"C:\Users\ntdls\Desktop\digit");
+            var trainingModels = LoadTrainingModels(@"C:\NTDLS\NTDLS.Determinet\Training Characters");
 
-            double initialLearningRate = 0.006;
-            int patience = 3; // Number of epochs to wait before reducing learning rate once cost starts increasing.
-            double decayFactor = 0.5; // Factor to reduce learning rate
-            int trainingEpochs = 250;
-
-            double learningRate = initialLearningRate;
+            double learningRate = dni.LearningRate > 0 ? dni.LearningRate : _initialLearningRate;
             double previousEpochLoss = double.MaxValue;
-            int patienceCounter = 0;
-            double epochLoss = double.PositiveInfinity;
+            double bestLoss = double.MaxValue;
+            int epochsSinceImprovement = 0;
+            int cooldownCounter = 0;
 
-            for (int epoch = 0; epoch < trainingEpochs; epoch++)
+            Console.WriteLine($"Starting backlog threads...");
+            ConcurrentStack<BacklogModel> backlogModels = new();
+
+            for (int epoch = 0; epoch < _trainingEpochs; epoch++)
             {
-                Console.WriteLine($"Epoch {epoch + 1}/{trainingEpochs} - Loss: {epochLoss:n8} - Learning Rate: {learningRate:n8}");
+                double epochLoss = 0;
 
                 dni.LearningRate = learningRate;
 
-                TrainingModel? model;
-                epochLoss = 0;
-                while ((model = GetRandomTrainingModel(trainingModels, epoch)) != null)
+                int threadCount = Environment.ProcessorCount;
+                int threadsCompleted = 0;
+                var threads = new List<Thread>();
+
+                for (int i = 0; i < threadCount; i++)
                 {
-                    var imageBits = GetImageGrayscaleBytes(model.FileName, _imageWidth, _imageHeight);
-                    epochLoss += dni.Train(imageBits, model.Expectation);
+                    threads.Add(new Thread(() =>
+                    {
+                        while (true)
+                        {
+                            while (backlogModels.Count >= 100)
+                            {
+                                Thread.Sleep(10); // Let the backlog get processed a bit before adding more.
+                            }
+
+                            var model = GetRandomTrainingModel(trainingModels, epoch);
+                            if (model == null)
+                            {
+                                break; // No more models left for this epoch.
+                            }
+                            backlogModels.Push(new BacklogModel(model));
+                        }
+
+                        Interlocked.Increment(ref threadsCompleted);
+                    }));
+                }
+
+                foreach (var thread in threads)
+                {
+                    thread.Start();
+                }
+
+                int samplesProcessed = 0;
+
+                if (epoch == 0)
+                {
+                    Console.WriteLine($"Training...");
+                }
+
+                while (backlogModels.TryPop(out var backlogModel) || threadsCompleted != threadCount)
+                {
+                    if (backlogModel == null)
+                    {
+                        Thread.Sleep(10);
+                    }
+                    else
+                    {
+                        var loss = dni.Train(backlogModel.Bits, backlogModel.Model.Expectation);
+                        epochLoss += loss;
+                        //Console.WriteLine($"{loss:n10}");
+                        samplesProcessed++;
+                    }
                 }
 
                 dni.SaveToFile(trainedModelFilename);
 
-                epochLoss /= trainingModels.Count;
+                /*
+                 Epoch |  Expected Avg. Loss | Interpretation
+                 1     |  ~4.6               | Random baseline
+                 5     |  ~3–3.5             | Network learning broad class features
+                 10    |  ~2                 | Clear improvement
+                 20+   |  <1.0               | Network reliably distinguishing characters
+                */
 
-                if (epochLoss > previousEpochLoss) // Check if loss has increased.
+                epochLoss /= Math.Max(1, samplesProcessed);
+
+                Console.WriteLine($"Epoch {epoch + 1}/{_trainingEpochs} - Loss: {epochLoss:n8} - Learning Rate: {learningRate:n8}");
+
+                #region Learning Rate Scheduler.
+
+                if (cooldownCounter > 0)
                 {
-                    if (patienceCounter++ >= patience)
-                    {
-                        // Reduce learning rate if loss has not improved for 'patience' epochs
-                        learningRate *= decayFactor;
-                        patienceCounter = 0; // Reset patience counter after reducing learning rate
-                        Console.WriteLine($"Reduced learning rate to {learningRate:n4}.");
-                    }
+                    cooldownCounter--;
                 }
                 else
                 {
-                    patienceCounter = 0; // Reset counter if loss decreases
+                    // Check improvement beyond tolerance
+                    if (epochLoss < bestLoss - _minDelta)
+                    {
+                        bestLoss = epochLoss;
+                        epochsSinceImprovement = 0;
+                    }
+                    else
+                    {
+                        epochsSinceImprovement++;
+
+                        if (epochsSinceImprovement >= _patience)
+                        {
+                            learningRate *= _decayFactor;
+                            epochsSinceImprovement = 0;
+                            cooldownCounter = _cooldown;
+
+                            Console.WriteLine(
+                                $"[LR Scheduler] Plateau detected (best={bestLoss:n4}, current={epochLoss:n4}). Reducing LR -> {learningRate:n6}");
+                        }
+                    }
                 }
+
+                #endregion
+
+                #region Early Stopping.
+
+                // early stop check
+                if (epoch >= _earlyStopMinEpochs && (epochsSinceImprovement >= _earlyStopPatience || epochLoss < _convergence))
+                {
+                    Console.WriteLine(
+                        $"[Convergence] No improvement for {epochsSinceImprovement} epochs. " +
+                        $"Best loss: {bestLoss:n4}. Stopping at epoch {epoch + 1}.");
+                    break;
+                }
+
+                #endregion
 
                 previousEpochLoss = epochLoss;
             }
@@ -171,100 +308,109 @@ namespace TestHarness
             return dni;
         }
 
-        static double[] GetImageGrayscaleBytes(string imagePath, int resizeWidth = 28, int resizeHeight = 28, int rotationAngleRange = 15)
+        static double[] GetImageGrayscaleBytes(string imagePath, int resizeWidth, int resizeHeight, int rotationAngleRange = 5)
         {
-            //Using images from: https://www.nist.gov/srd/nist-special-database-19
-
-            var fileBytes = File.ReadAllBytes(imagePath);
-
-            // Load the image in RGB format and convert to RGBA.
-            using var img = Image.Load<Rgba32>(new MemoryStream(fileBytes));
-
-            // Determine larger canvas size (double the original size to prevent cropping during rotation).
-            int largerSize = Math.Max(img.Width, img.Height) * 2;
-
-            // Create a new transparent image with the larger canvas size.
-            using var canvas = new Image<Rgba32>(largerSize, largerSize, Color.Transparent);
-
-            // Center the original image on this new transparent canvas.
-            int offsetX = (largerSize - img.Width) / 2;
-            int offsetY = (largerSize - img.Height) / 2;
-            canvas.Mutate(x => x.DrawImage(img, new Point(offsetX, offsetY), 1.0f));
-
-            // Apply random rotation to the whole canvas.
-            int randomAngle = DniUtility.Random.Next(-rotationAngleRange, rotationAngleRange);
-            canvas.Mutate(x => x.Rotate(randomAngle));
-
-            // Define the bounds for cropping out non-transparent areas.
-            int left = canvas.Width, right = 0, top = canvas.Height, bottom = 0;
-            for (int y = 0; y < canvas.Height; y++)
+            try
             {
-                for (int x = 0; x < canvas.Width; x++)
+                //Using images from: https://www.nist.gov/srd/nist-special-database-19
+
+                var fileBytes = File.ReadAllBytes(imagePath);
+
+                // Load the image in RGB format and convert to RGBA.
+                using var img = Image.Load<Rgba32>(new MemoryStream(fileBytes));
+
+                // Determine larger canvas size (double the original size to prevent cropping during rotation).
+                int largerSize = Math.Max(img.Width, img.Height) * 2;
+
+                // Create a new transparent image with the larger canvas size.
+                using var canvas = new Image<Rgba32>(largerSize, largerSize, Color.White);
+
+                // Center the original image on this new transparent canvas.
+                int offsetX = (largerSize - img.Width) / 2;
+                int offsetY = (largerSize - img.Height) / 2;
+                canvas.Mutate(x => x.DrawImage(img, new Point(offsetX, offsetY), 1.0f));
+
+                // Apply random rotation to the whole canvas.
+                int randomAngle = DniUtility.Random.Next(-rotationAngleRange, rotationAngleRange);
+                canvas.Mutate(x => x.Rotate(randomAngle));
+
+                // Define the bounds for cropping out non-transparent areas.
+                int left = canvas.Width, right = 0, top = canvas.Height, bottom = 0;
+                for (int y = 0; y < canvas.Height; y++)
                 {
-                    Rgba32 pixel = canvas[x, y];
-                    if (pixel.A > 0) // Find non-transparent pixels.
+                    for (int x = 0; x < canvas.Width; x++)
                     {
-                        if (x < left) left = x;
-                        if (x > right) right = x;
-                        if (y < top) top = y;
-                        if (y > bottom) bottom = y;
+                        Rgba32 pixel = canvas[x, y];
+                        if (pixel.A > 0) // Find non-transparent pixels.
+                        {
+                            if (x < left) left = x;
+                            if (x > right) right = x;
+                            if (y < top) top = y;
+                            if (y > bottom) bottom = y;
+                        }
                     }
                 }
-            }
 
-            // Crop to the bounding box of the rotated image content.
-            int width = right - left + 1;
-            int height = bottom - top + 1;
-            var bounds = new Rectangle(left, top, width, height);
-            canvas.Mutate(x => x.Crop(bounds));
+                // Crop to the bounding box of the rotated image content.
+                int width = right - left + 1;
+                int height = bottom - top + 1;
+                var bounds = new Rectangle(left, top, width, height);
+                canvas.Mutate(x => x.Crop(bounds));
 
-            // Define initial bounds for cropping non-white areas.
-            left = canvas.Width;
-            right = 0;
-            top = canvas.Height;
-            bottom = 0;
+                // Define initial bounds for cropping non-white areas.
+                left = canvas.Width;
+                right = 0;
+                top = canvas.Height;
+                bottom = 0;
 
-            // Loop through pixels to find non-white areas.
-            for (int y = 0; y < canvas.Height; y++)
-            {
-                for (int x = 0; x < canvas.Width; x++)
+                // Loop through pixels to find non-white areas.
+                for (int y = 0; y < canvas.Height; y++)
                 {
-                    Rgba32 pixel = canvas[x, y];
-                    if (pixel.A > 0 && (pixel.R < 255 || pixel.G < 255 || pixel.B < 255))
+                    for (int x = 0; x < canvas.Width; x++)
                     {
-                        if (x < left) left = x;
-                        if (x > right) right = x;
-                        if (y < top) top = y;
-                        if (y > bottom) bottom = y;
+                        Rgba32 pixel = canvas[x, y];
+                        if (pixel.A > 0 && (pixel.R < 255 || pixel.G < 255 || pixel.B < 255))
+                        {
+                            if (x < left) left = x;
+                            if (x > right) right = x;
+                            if (y < top) top = y;
+                            if (y > bottom) bottom = y;
+                        }
                     }
                 }
-            }
 
-            // Calculate the bounding box.
-            width = right - left + 1;
-            height = bottom - top + 1;
-            bounds = new Rectangle(left, top, width, height);
+                // Calculate the bounding box.
+                width = right - left + 1;
+                height = bottom - top + 1;
+                bounds = new Rectangle(left, top, width, height);
 
-            // Crop to the bounding box.
-            canvas.Mutate(x => x.Crop(bounds));
+                // Crop to the bounding box.
+                canvas.Mutate(x => x.Crop(bounds));
 
-            // Resize to target dimensions.
-            using var finalResizedImg = canvas.Clone(context => context.Resize(resizeWidth, resizeHeight));
+                // Resize to target dimensions.
+                using var finalResizedImg = canvas.Clone(context => context.Resize(resizeWidth, resizeHeight));
 
-            // Convert to grayscale and normalize.
-            double[] pixelData = new double[resizeWidth * resizeHeight];
-            int index = 0;
-            for (int y = 0; y < finalResizedImg.Height; y++)
-            {
-                for (int x = 0; x < finalResizedImg.Width; x++)
+                // Convert to grayscale and normalize.
+                double[] pixelData = new double[resizeWidth * resizeHeight];
+                int index = 0;
+                for (int y = 0; y < finalResizedImg.Height; y++)
                 {
-                    var pixel = finalResizedImg[x, y];
-                    byte grayValue = (byte)(0.299 * pixel.R + 0.587 * pixel.G + 0.114 * pixel.B);
-                    pixelData[index++] = grayValue / 255.0; // Scale the pixel value to 0-1 (normalize).
+                    for (int x = 0; x < finalResizedImg.Width; x++)
+                    {
+                        var pixel = finalResizedImg[x, y];
+                        byte grayValue = (byte)(0.299 * pixel.R + 0.587 * pixel.G + 0.114 * pixel.B);
+                        pixelData[index++] = grayValue / 255.0; // Scale the pixel value to 0-1 (normalize).
+                    }
                 }
-            }
 
-            return pixelData;
+                //finalResizedImg.Save($"debug_{Path.GetFileNameWithoutExtension(imagePath)}.png");
+
+                return pixelData;
+            }
+            catch
+            {
+                throw;
+            }
         }
     }
 }
