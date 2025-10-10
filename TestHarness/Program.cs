@@ -28,7 +28,7 @@ namespace TestHarness
 
             //File.Delete(trainedModelFilename);
 
-            DniNeuralNetwork dni = TrainAndSave(trainedModelFilename);
+            var dni = TrainAndSave(trainedModelFilename);
 
             /*
             int outputNode = 0;
@@ -156,7 +156,8 @@ namespace TestHarness
                 configuration.AddInputLayer(_imageWidth * _imageHeight);
 
                 var layerParam = new DniNamedFunctionParameters();
-                layerParam.Set("UseBatchNorm", true);
+                //ayerParam.Set(DniParameters.LayerParameters.UseBatchNorm, true);
+                //layerParam.Set(DniParameters.LayerParameters.BatchNormUseKaiming, true);
 
                 //MLPs: 2–3 hidden layers, 128–512 units each, tapering (512, 256, 128).
                 configuration.AddIntermediateLayer(512, DniActivationType.LeakyReLU);

@@ -93,7 +93,7 @@ namespace NTDLS.Determinet
                 layer.Activations = // Weighted sum
                      ActivateLayer(State.Layers[i - 1].Activations, State.Synapses[i - 1].Weights, State.Synapses[i - 1].Biases);
 
-                if (layer.Parameters.Get("UseBatchNorm", false))
+                if (layer.Parameters.Get(DniParameters.LayerParameters.UseBatchNorm, false))
                 {
                     BatchNormalize(layer);
                 }
@@ -104,6 +104,8 @@ namespace NTDLS.Determinet
 
             return State.Layers.Last().Activations;
         }
+
+
 
         /// <summary>
         /// Normalizes the values in the specified array of activations using batch normalization.
@@ -118,8 +120,14 @@ namespace NTDLS.Determinet
             double variance = layer.Activations.Select(a => Math.Pow(a - mean, 2)).Average();
             double stdDev = Math.Sqrt(variance + 1e-8);
 
-            double gamma = layer.Parameters.Get("BatchNormGamma", 1);  // scale
-            double beta = layer.Parameters.Get("BatchNormBeta", 1); ;  // shift
+            double gamma;
+
+            if (layer.Parameters.Get(DniParameters.LayerParameters.BatchNormUseKaiming, false))
+                gamma = layer.Parameters.Get(DniParameters.LayerParameters.BatchNormGamma, 1.0 / Math.Sqrt(layer.NodeCount));
+            else
+                gamma = layer.Parameters.Get(DniParameters.LayerParameters.BatchNormGamma, 1);  // scale
+
+            double beta = layer.Parameters.Get(DniParameters.LayerParameters.BatchNormBeta, 0);  // shift
 
             for (int i = 0; i < layer.Activations.Length; i++)
                 layer.Activations[i] = gamma * ((layer.Activations[i] - mean) / stdDev) + beta;
