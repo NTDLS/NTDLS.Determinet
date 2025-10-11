@@ -141,24 +141,19 @@ namespace NTDLS.Determinet
             int layerSize = biases.Length;
             double[] output = new double[layerSize];
 
-            for (int j = 0; j < layerSize; j++)
+            Parallel.For(0, layerSize, _parallelOpts, j =>
             {
                 double sum = biases[j];
-
                 for (int i = 0; i < inputs.Length; i++)
                 {
                     double v = inputs[i] * weights[i, j];
-
                     if (double.IsNaN(v) || double.IsInfinity(v))
-                        v = 0; // neutralize bad math
-
+                        v = 0;
                     sum += v;
                 }
-
-                // prevent overflow from huge weights
                 sum = Math.Clamp(sum, -1e6, 1e6);
                 output[j] = sum;
-            }
+            });
 
             return output;
         }
@@ -210,35 +205,52 @@ namespace NTDLS.Determinet
             for (int i = State.Layers.Count - 2; i > 0; i--)
             {
                 var layerError = new double[State.Layers[i].NodeCount];
-                for (int j = 0; j < State.Layers[i].NodeCount; j++)
+
+                Parallel.For(0, State.Layers[i].NodeCount, _parallelOpts, j =>
                 {
-                    layerError[j] = 0.0;
+                    double sum = 0.0;
                     for (int k = 0; k < State.Layers[i + 1].NodeCount; k++)
-                    {
-                        layerError[j] += errors.First()[k] * State.Synapses[i].Weights[j, k];
-                    }
-                    layerError[j] *= State.Layers[i].ActivateDerivative(j);
-                }
+                        sum += errors.First()[k] * State.Synapses[i].Weights[j, k];
+
+                    layerError[j] = sum * State.Layers[i].ActivateDerivative(j);
+                });
+
                 errors.Insert(0, layerError);
             }
+
 
             // Update weights and biases with gradient descent
             for (int i = 0; i < State.Synapses.Count; i++)
             {
-                for (int j = 0; j < State.Synapses[i].Weights.GetLength(0); j++)
-                {
-                    for (int k = 0; k < State.Synapses[i].Weights.GetLength(1); k++)
-                    {
-                        State.Synapses[i].Weights[j, k] -= State.LearningRate * errors[i][k] * State.Layers[i].Activations[j];
-                    }
-                }
+                //These could be inlined, but are placed here to reduce index lookups and array/property accessors.
+                var synapse = State.Synapses[i];
+                var weights = synapse.Weights;
+                var biases = synapse.Biases;
+                var activations = State.Layers[i].Activations;
+                var error = errors[i];
+                double lr = State.LearningRate;
 
-                for (int j = 0; j < State.Synapses[i].Biases.Length; j++)
+                // Parallelize across input neurons (rows)
+                Parallel.For(0, weights.GetLength(0), _parallelOpts, j =>
                 {
-                    State.Synapses[i].Biases[j] -= State.LearningRate * errors[i][j];
+                    for (int k = 0; k < weights.GetLength(1); k++)
+                    {
+                        weights[j, k] -= lr * error[k] * activations[j];
+                    }
+                });
+
+                // Bias updates (cheap — don’t bother parallelizing)
+                for (int j = 0; j < biases.Length; j++)
+                {
+                    biases[j] -= lr * error[j];
                 }
             }
         }
+
+        private static readonly ParallelOptions _parallelOpts = new()
+        {
+            MaxDegreeOfParallelism = Environment.ProcessorCount
+        };
 
         /// <summary>
         /// Training function for single epoch.
