@@ -4,6 +4,7 @@ using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
 using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
 
 namespace TestHarness
 {
@@ -11,6 +12,7 @@ namespace TestHarness
     {
         const double _initialLearningRate = 0.0005; // Starting learning rate for training.
         const double _convergence = 0.000000001;    // Threshold for considering the training has converged.
+        const int _cooldown = 2;                    // epochs to wait after each learning rate decay.
         const int _patience = 3;                    // Number of epochs to wait before reducing learning rate once cost starts increasing or reaches a plateau.
         const double _decayFactor = 0.5;            // Factor to reduce learning rate
         const int _trainingEpochs = 250;            // Total number of training epochs
@@ -18,7 +20,6 @@ namespace TestHarness
         const int _imageHeight = 64;                // Downscale for faster processing with minimal quality loss.
         const int _outputNodes = 62;                // 10 digits + 26 lowercase + 26 uppercase letters
         const double _minDelta = 0.001;             // minimum improvement threshold
-        const int _cooldown = 2;                    // epochs to wait after each decay
         const int _earlyStopPatience = 10;          // epochs with no improvement before stopping
         const int _earlyStopMinEpochs = 10;         // minimum epochs before we even consider stopping
 
@@ -96,7 +97,7 @@ namespace TestHarness
         /// Gets a random training model from the list that has not yet been fed-in for the current training epoch.
         /// Increments the training epoch for the random model.
         /// </summary>
-        private static TrainingModel? GetRandomTrainingModel(List<TrainingModel> models, int epoch)
+        private static bool TryGetRandomTrainingModel(List<TrainingModel> models, int epoch, [NotNullWhen(true)] out TrainingModel? randomModel)
         {
             lock (_lockGetRandomTrainingModel)
             {
@@ -104,16 +105,17 @@ namespace TestHarness
 
                 if (modelsThisEpoch.Count == 0)
                 {
-                    return null;
+                    randomModel = null;
+                    return false;
                 }
 
                 int randomIndex = DniUtility.Random.Next(modelsThisEpoch.Count);
-                var randomModel = modelsThisEpoch[randomIndex];
+                randomModel = modelsThisEpoch[randomIndex];
 
                 //Once we have consumed a model for this epoch, increment its epoch so we don't use it again this epoch:
                 randomModel.Epoch++;
 
-                return randomModel;
+                return true;
             }
         }
 
@@ -180,53 +182,42 @@ namespace TestHarness
             var trainingModels = LoadTrainingModels(@"C:\NTDLS\NTDLS.Determinet\Training Characters");
 
             double learningRate = dni.LearningRate > 0 ? dni.LearningRate : _initialLearningRate;
+
             double previousEpochLoss = double.MaxValue;
             double bestLoss = double.MaxValue;
             int epochsSinceImprovement = 0;
-            int cooldownCounter = 0;
+            int cooldownCounter = _cooldown;
 
             Console.WriteLine($"Starting backlog threads...");
             ConcurrentStack<BacklogModel> backlogModels = new();
 
             for (int epoch = 0; epoch < _trainingEpochs; epoch++)
             {
-                double epochLoss = 0;
-
                 dni.LearningRate = learningRate;
 
+                double epochLoss = 0;
+                int samplesProcessed = 0;
                 int threadCount = Environment.ProcessorCount;
                 int threadsCompleted = 0;
-                var threads = new List<Thread>();
 
                 for (int i = 0; i < threadCount; i++)
                 {
-                    threads.Add(new Thread(() =>
+                    Task.Run(() =>
                     {
-                        while (true)
+                        while (TryGetRandomTrainingModel(trainingModels, epoch, out var model))
                         {
+                            backlogModels.Push(new BacklogModel(model));
+
                             while (backlogModels.Count >= 100)
                             {
                                 Thread.Sleep(10); // Let the backlog get processed a bit before adding more.
                             }
-
-                            var model = GetRandomTrainingModel(trainingModels, epoch);
-                            if (model == null)
-                            {
-                                break; // No more models left for this epoch.
-                            }
-                            backlogModels.Push(new BacklogModel(model));
                         }
 
                         Interlocked.Increment(ref threadsCompleted);
-                    }));
+                    });
                 }
 
-                foreach (var thread in threads)
-                {
-                    thread.Start();
-                }
-
-                int samplesProcessed = 0;
 
                 if (epoch == 0)
                 {
@@ -248,8 +239,6 @@ namespace TestHarness
                     }
                 }
 
-                dni.SaveToFile(trainedModelFilename);
-
                 /*
                  Epoch |  Expected Avg. Loss | Interpretation
                  1     |  ~4.6               | Random baseline
@@ -262,6 +251,19 @@ namespace TestHarness
 
                 Console.WriteLine($"Epoch {epoch + 1}/{_trainingEpochs} - Loss: {epochLoss:n8} - Learning Rate: {learningRate:n10}");
 
+                if (epochLoss < bestLoss - _minDelta)
+                {
+                    //We save every time we get a new best loss.
+                    dni.SaveToFile(trainedModelFilename);
+
+                    bestLoss = epochLoss;
+                    epochsSinceImprovement = 0;
+                }
+                else
+                {
+                    epochsSinceImprovement++;
+                }
+
                 #region Learning Rate Scheduler.
 
                 if (cooldownCounter > 0)
@@ -270,25 +272,13 @@ namespace TestHarness
                 }
                 else
                 {
-                    // Check improvement beyond tolerance
-                    if (epochLoss < bestLoss - _minDelta)
+                    if (epochsSinceImprovement >= _patience)
                     {
-                        bestLoss = epochLoss;
-                        epochsSinceImprovement = 0;
-                    }
-                    else
-                    {
-                        epochsSinceImprovement++;
+                        learningRate *= _decayFactor;
+                        cooldownCounter = _cooldown;
 
-                        if (epochsSinceImprovement >= _patience)
-                        {
-                            learningRate *= _decayFactor;
-                            epochsSinceImprovement = 0;
-                            cooldownCounter = _cooldown;
-
-                            Console.WriteLine(
-                                $"[LR Scheduler] Plateau detected (best={bestLoss:n4}, current={epochLoss:n4}). Reducing LR -> {learningRate:n6}");
-                        }
+                        Console.WriteLine(
+                            $"[LR Scheduler] Plateau detected (best={bestLoss:n4}, current={epochLoss:n4}). Reducing LR -> {learningRate:n6}");
                     }
                 }
 
