@@ -17,22 +17,17 @@ namespace NTDLS.Determinet
     [ProtoContract]
     public class DniNeuralNetwork
     {
-        public double LearningRate
-        {
-            get => State.LearningRate;
-            set => State.LearningRate = value;
-        }
-
-        private static readonly ParallelOptions _parallelOpts = new()
+        private static readonly ParallelOptions _parallelOptions = new()
         {
             MaxDegreeOfParallelism = Environment.ProcessorCount
         };
 
+        [ProtoMember(1)] public DniNamedFunctionParameters Parameters { get; private set; } = new();
         [ProtoMember(2)] public DniStateOfBeing State { get; private set; } = new();
 
         public DniNeuralNetwork(DniConfiguration configuration)
         {
-            State.LearningRate = configuration.LearningRate;
+            Parameters.Set(Network.LearningRate, configuration.LearningRate);
 
             //Add input layer.
             State.Layers.Add(new DniLayer(DniLayerType.Input, configuration.InputNodes, new()));
@@ -124,7 +119,7 @@ namespace NTDLS.Determinet
                 layer.Activations = // Weighted sum
                      ActivateLayer(State.Layers[i - 1].Activations, State.Synapses[i - 1].Weights, State.Synapses[i - 1].Biases);
 
-                if (layer.Parameters.Get(Layer.UseBatchNorm, false))
+                if (layer.Parameters.Get(Layer.UseBatchNorm, Layer.DefaultUseBatchNorm))
                 {
                     BatchNormalize(layer, isTraining);
                 }
@@ -148,7 +143,7 @@ namespace NTDLS.Determinet
             if (layer.Gamma == null || layer.Beta == null)
                 return;
 
-            double momentum = layer.Parameters.Get(Layer.BatchNormMomentum, 0.2);
+            var momentum = layer.Parameters.Get(Layer.BatchNormMomentum, Layer.DefaultBatchNormMomentum);
 
             // --- TRAINING ---
             if (isTraining)
@@ -199,7 +194,7 @@ namespace NTDLS.Determinet
             int layerSize = biases.Length;
             double[] output = new double[layerSize];
 
-            Parallel.For(0, layerSize, _parallelOpts, j =>
+            Parallel.For(0, layerSize, _parallelOptions, j =>
             {
                 double sum = biases[j];
                 for (int i = 0; i < inputs.Length; i++)
@@ -248,6 +243,10 @@ namespace NTDLS.Determinet
         /// <param name="actualOutput">The expected output values used to calculate the error during backpropagation.</param>
         private void Backpropagate(double[] inputs, double[] actualOutput)
         {
+            double learningRate = Parameters.Get<double>(Network.LearningRate, Network.DefaultLearningRate);
+            var weightDecay = Parameters.Get(Network.WeightDecay, Network.DefaultWeightDecay);
+            var gradientClip = Parameters.Get(Network.GradientClip, Network.DefaultGradientClip);
+
             List<double[]>? errors;
 
             if (State.Layers.Last().ActivationFunction is DniSimpleSoftMaxFunction)
@@ -271,11 +270,12 @@ namespace NTDLS.Determinet
             }
 
             // Calculate errors for each layer back through all hidden layers
+            // Backpropagate through hidden layers
             for (int i = State.Layers.Count - 2; i > 0; i--)
             {
                 var layerError = new double[State.Layers[i].NodeCount];
 
-                Parallel.For(0, State.Layers[i].NodeCount, _parallelOpts, j =>
+                Parallel.For(0, State.Layers[i].NodeCount, _parallelOptions, j =>
                 {
                     double sum = 0.0;
                     for (int k = 0; k < State.Layers[i + 1].NodeCount; k++)
@@ -287,34 +287,41 @@ namespace NTDLS.Determinet
                 errors.Insert(0, layerError);
             }
 
-            // Update weights and biases with gradient descent
+            // Update weights and biases
             for (int i = 0; i < State.Synapses.Count; i++)
             {
-                //These could be inlined, but are placed here to reduce index lookups and array/property accessors.
                 var synapse = State.Synapses[i];
                 var weights = synapse.Weights;
                 var biases = synapse.Biases;
                 var activations = State.Layers[i].Activations;
                 var error = errors[i];
-                double lr = State.LearningRate;
 
-                // Parallelize across input neurons (rows)
-                Parallel.For(0, weights.GetLength(0), _parallelOpts, j =>
+                Parallel.For(0, weights.GetLength(0), _parallelOptions, j =>
                 {
                     for (int k = 0; k < weights.GetLength(1); k++)
                     {
-                        weights[j, k] -= lr * error[k] * activations[j];
+                        double grad = learningRate * (error[k] * activations[j] + weightDecay * weights[j, k]);
+                        grad = Math.Clamp(grad, -gradientClip, gradientClip);
+                        if (double.IsNaN(grad) || double.IsInfinity(grad))
+                            grad = 0;
+
+                        weights[j, k] -= grad;
                     }
                 });
 
-                // Bias updates (cheap — don’t bother parallelizing)
+                // Bias updates (cheap — sequential is fine)
                 for (int j = 0; j < biases.Length; j++)
                 {
-                    biases[j] -= lr * error[j];
+                    double bgrad = learningRate * error[j];
+                    bgrad = Math.Clamp(bgrad, -gradientClip, gradientClip);
+                    if (double.IsNaN(bgrad) || double.IsInfinity(bgrad))
+                        bgrad = 0;
+
+                    biases[j] -= bgrad;
                 }
 
-                // --- BatchNorm parameter updates (γ and β) ---
-                if (State.Layers[i + 1].Parameters.Get(Layer.UseBatchNorm, false))
+                // --- Optional BatchNorm γ, β updates ---
+                if (State.Layers[i + 1].Parameters.Get(Layer.UseBatchNorm, Layer.DefaultUseBatchNorm))
                 {
                     var bnLayer = State.Layers[i + 1];
                     if (bnLayer.Gamma != null && bnLayer.Beta != null)
@@ -328,9 +335,14 @@ namespace NTDLS.Determinet
                         for (int j = 0; j < nodeCount; j++)
                         {
                             var normalized = (bnLayer.Activations[j] - batchMean) / stdDev;
+                            double gGrad = learningRate * layerError[j] * normalized;
+                            double bGrad = learningRate * layerError[j];
 
-                            bnLayer.Gamma[j] -= lr * layerError[j] * normalized;
-                            bnLayer.Beta[j] -= lr * layerError[j];
+                            gGrad = Math.Clamp(gGrad, -gradientClip, gradientClip);
+                            bGrad = Math.Clamp(bGrad, -gradientClip, gradientClip);
+
+                            bnLayer.Gamma[j] -= gGrad;
+                            bnLayer.Beta[j] -= bGrad;
 
                             bnLayer.Gamma[j] -= 1e-5 * (bnLayer.Gamma[j] - 1.0);
                             bnLayer.Gamma[j] = Math.Clamp(bnLayer.Gamma[j], 0.01, 10.0);
@@ -349,9 +361,6 @@ namespace NTDLS.Determinet
         /// <exception cref="Exception">Thrown if the learning rate is less than or equal to zero.</exception>
         public double Train(double[] inputs, double[] expected)
         {
-            if (State.LearningRate <= 0)
-                throw new Exception("Learning rate must be greater than zero.");
-
             var predictions = Forward(inputs, true);
 
             // Compute numerically-stable loss

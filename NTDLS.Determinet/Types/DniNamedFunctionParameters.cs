@@ -85,7 +85,7 @@ namespace NTDLS.Determinet.Types
             return values;
         }
 
-        public T Get<T>(string key, T defaultValue)
+        public T? Get<T>(string key, T defaultValue)
         {
             var result = _cache.GetOrCreate(key, entry =>
             {

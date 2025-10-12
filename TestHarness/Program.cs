@@ -5,6 +5,7 @@ using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
+using static NTDLS.Determinet.DniParameters;
 
 namespace TestHarness
 {
@@ -24,7 +25,6 @@ namespace TestHarness
         const int _earlyStopMinEpochs = 10;         // minimum epochs before we even consider stopping
         const double _minLearningRate = 0.000001;
         const double _slop = 0.000000000001;
-
 
         static void Main()
         {
@@ -146,7 +146,10 @@ namespace TestHarness
             }
             else
             {
-                var configuration = new DniConfiguration();
+                var configuration = new DniConfiguration()
+                {
+                    LearningRate = _initialLearningRate
+                };
 
                 /*
                 | Layer    | Role                                     | Notes                                                                              |
@@ -187,7 +190,7 @@ namespace TestHarness
             Console.WriteLine($"Loading image paths...");
             var trainingModels = LoadTrainingModels(@"C:\NTDLS\NTDLS.Determinet\Training Characters");
 
-            double learningRate = dni.LearningRate > 0 ? dni.LearningRate : _initialLearningRate;
+            var learningRate = Math.Min(dni.Parameters.Get(Network.LearningRate, _initialLearningRate), _initialLearningRate);
 
             double previousEpochLoss = double.MaxValue;
             double bestLoss = double.MaxValue;
@@ -199,7 +202,7 @@ namespace TestHarness
 
             for (int epoch = 0; epoch < _trainingEpochs; epoch++)
             {
-                dni.LearningRate = learningRate;
+                dni.Parameters.Set(Network.LearningRate, learningRate);
 
                 double epochLoss = 0;
                 int samplesProcessed = 0;

@@ -11,7 +11,6 @@ namespace NTDLS.Determinet
     [ProtoContract]
     public class DniStateOfBeing
     {
-        [ProtoMember(1)] public double LearningRate { get; internal set; }
         [ProtoMember(2)] public List<DniLayer> Layers { get; internal set; } = new();
         [ProtoMember(3)] public List<DniSynapse> Synapses { get; internal set; } = new();
     }

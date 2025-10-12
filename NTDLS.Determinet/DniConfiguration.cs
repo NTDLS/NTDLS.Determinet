@@ -1,4 +1,5 @@
 ﻿using NTDLS.Determinet.Types;
+using static NTDLS.Determinet.DniParameters;
 
 namespace NTDLS.Determinet
 {
@@ -12,7 +13,7 @@ namespace NTDLS.Determinet
     {
         private DniConfigurationLayer? _outputLayer;
 
-        public double LearningRate { get; set; }
+        public double LearningRate { get; set; } = Network.DefaultLearningRate;
         public int InputNodes { get; private set; }
         public DniConfigurationLayer OutputLayer => _outputLayer ?? throw new Exception("Output layer is not defined.");
         public List<DniConfigurationLayer> IntermediateLayers { get; set; } = new();

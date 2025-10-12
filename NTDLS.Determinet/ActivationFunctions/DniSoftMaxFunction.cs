@@ -27,8 +27,8 @@ namespace NTDLS.Determinet.ActivationFunctions
 
         public DniSoftMaxFunction(DniNamedFunctionParameters param)
         {
-            Temperature = param.Get(SoftMax.Temperature, 1.0);
-            MaxLogit = param.Get(SoftMax.MaxLogit, 50);
+            Temperature = param.Get(SoftMax.Temperature, SoftMax.DefaultTemperature);
+            MaxLogit = param.Get(SoftMax.MaxLogit, SoftMax.DefaultMaxLogit);
         }
 
         public double[] Activation(double[] nodes)
