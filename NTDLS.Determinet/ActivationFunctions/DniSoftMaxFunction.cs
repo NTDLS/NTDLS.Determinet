@@ -1,30 +1,53 @@
 ﻿using NTDLS.Determinet.ActivationFunctions.Interfaces;
 using NTDLS.Determinet.Types;
+using static NTDLS.Determinet.DniParameters;
 
 namespace NTDLS.Determinet.ActivationFunctions
 {
-
     /// <summary>
-    /// Represents the SoftMax activation function, commonly used in neural networks to convert raw output values into probabilities.
+    /// Represents a softmax activation function with temperature scaling and numerical stability enhancements.
     /// </summary>
-    /// <remarks>The SoftMax function normalizes an array of input values such that the output values
-    /// represent probabilities, summing to 1. This is achieved by exponentiating the inputs (after subtracting the
-    /// maximum value for numerical stability) and dividing each exponentiated value by the sum of all exponentiated
-    /// values.</remarks>
+    /// <remarks>The softmax function is commonly used in machine learning for converting a vector of raw
+    /// scores (logits)  into probabilities. This implementation includes temperature scaling to control the sharpness
+    /// of the  output probabilities and clamping of logits to prevent numerical instability during
+    /// computation.</remarks>
     public class DniSoftMaxFunction : IDniActivationFunction
     {
+        /// <summary>
+        /// Temperature scaling factor. 
+        /// Higher values soften probabilities; lower values sharpen them.
+        /// </summary>
+        public double Temperature { get; private set; }
+
+        /// <summary>
+        /// Maximum absolute logit value allowed before clamping.
+        /// Prevents overflow in exp() and stabilizes training.
+        /// </summary>
+        public double MaxLogit { get; private set; }
+
         public DniSoftMaxFunction(DniNamedFunctionParameters param)
         {
+            Temperature = param.Get(SoftMax.Temperature, 1.0);
+            MaxLogit = param.Get(SoftMax.MaxLogit, 50);
         }
 
         public double[] Activation(double[] nodes)
         {
-            double max = nodes.Max();
+            if (nodes.Length == 0)
+                return Array.Empty<double>();
 
-            // subtract max for stability
-            double[] exps = nodes.Select(v =>
+            // Clamp logits to prevent extreme exponentials
+            double[] clamped = nodes.Select(v => Math.Clamp(v, -MaxLogit, MaxLogit)).ToArray();
+
+            // Numerical stability: subtract the max before exp
+            double max = clamped.Max();
+
+            // Apply temperature scaling
+            double invTemp = 1.0 / Temperature;
+
+            double[] exps = clamped.Select(v =>
             {
-                double e = Math.Exp(v - max);
+                double e = Math.Exp((v - max) * invTemp);
                 if (double.IsNaN(e) || double.IsInfinity(e))
                     e = 0.0;
                 return e;
@@ -32,8 +55,7 @@ namespace NTDLS.Determinet.ActivationFunctions
 
             double sum = exps.Sum();
 
-            // avoid divide-by-zero
-            if (sum == 0 || double.IsNaN(sum) || double.IsInfinity(sum))
+            if (sum <= 1e-12 || double.IsNaN(sum) || double.IsInfinity(sum))
                 sum = 1e-12;
 
             for (int i = 0; i < exps.Length; i++)

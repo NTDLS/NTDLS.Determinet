@@ -17,7 +17,7 @@ namespace NTDLS.Determinet.ActivationFunctions
 
         public DniLeakyReLUFunction(DniNamedFunctionParameters param)
         {
-            Alpha = param.Get(LayerParameters.LeakyReLUAlpha, 0.01);
+            Alpha = param.Get(LeakyReLU.Alpha, 0.01);
         }
 
         public double[] Activation(double[] nodes)

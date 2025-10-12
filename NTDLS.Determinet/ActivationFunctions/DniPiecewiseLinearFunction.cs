@@ -14,8 +14,8 @@ namespace NTDLS.Determinet.ActivationFunctions
     /// constant outside the range (equal to the slope) and 1 within the range.</remarks>
     public class DniPiecewiseLinearFunction : IDniActivationFunction
     {
-        public double Alpha { get; private set; } = 0.1; //Linear slope value.
-        public DniRange Range { get; private set; } = new DniRange(-1, +1); //Function output range.
+        public double Alpha { get; private set; } //Linear slope value.
+        public DniRange Range { get; private set; } //Function output range.
 
         public DniPiecewiseLinearFunction(DniNamedFunctionParameters param)
         {

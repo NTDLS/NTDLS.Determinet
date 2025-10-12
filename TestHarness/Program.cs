@@ -5,7 +5,6 @@ using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
-using static NTDLS.Determinet.DniParameters;
 
 namespace TestHarness
 {
@@ -162,8 +161,8 @@ namespace TestHarness
                 configuration.AddInputLayer(_imageWidth * _imageHeight);
 
                 var leakyReLUParam = new DniNamedFunctionParameters();
-                //leakyReLUParam.Set(LayerParameters.UseBatchNorm, true);
-                //layerParam.Set(DniParameters.LayerParameters.BatchNormMomentum, 0.9);
+                //leakyReLUParam.Set(Layer.UseBatchNorm, true);
+                //leakyReLUParam.Set(Layer.BatchNormMomentum, 0.9);
 
                 //MLPs: 2–3 hidden layers, 128–512 units each, tapering (512, 256, 128).
                 configuration.AddIntermediateLayer(768, DniActivationType.LeakyReLU);
@@ -179,7 +178,7 @@ namespace TestHarness
                 */
 
                 var softMaxParam = new DniNamedFunctionParameters();
-                //softMaxParam.Set(LayerParameters.SoftMaxTemperature, 5.5);
+                //softMaxParam.Set(SoftMax.Temperature, 5.5);
                 configuration.AddOutputLayer(_outputNodes, DniActivationType.SoftMax, softMaxParam);
 
                 dni = new DniNeuralNetwork(configuration);

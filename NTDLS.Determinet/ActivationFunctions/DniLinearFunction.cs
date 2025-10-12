@@ -12,9 +12,9 @@ namespace NTDLS.Determinet.ActivationFunctions
     /// linear transformation is required.</remarks>
     public class DniLinearFunction : IDniActivationFunction
     {
-        public double Alpha { get; private set; } = 1; //Linear slope value.
+        public double Alpha { get; private set; } //Linear slope value.
 
-        public DniRange Range { get; private set; } = new DniRange(-1, +1); //Function output range.
+        public DniRange Range { get; private set; } //Function output range.
 
         public DniLinearFunction(DniNamedFunctionParameters param)
         {

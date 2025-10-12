@@ -2,6 +2,7 @@
 using NTDLS.Determinet.Types;
 using ProtoBuf;
 using System.IO.Compression;
+using static NTDLS.Determinet.DniParameters;
 
 namespace NTDLS.Determinet
 {
@@ -54,8 +55,12 @@ namespace NTDLS.Determinet
         }
 
         /// <summary>
-        /// Initialize weights and biases for each layer.
+        /// Initializes the weights and biases for the neural network layers.
         /// </summary>
+        /// <remarks>This method uses the He initialization technique to set the weights to small random
+        /// values  based on the size of the current layer. Biases are initialized to random values in the range [-0.5, 0.5].
+        /// The initialized weights and biases are stored in the <see cref="State.Synapses"/>
+        /// collection.</remarks>
         private void InitializeWeightsAndBiases()
         {
             for (int i = 0; i < State.Layers.Count - 1; i++)
@@ -85,12 +90,29 @@ namespace NTDLS.Determinet
             }
         }
 
+
         /// <summary>
-        /// Forward pass through the network
+        /// Computes the output of the model for the given input values.
         /// </summary>
+        /// <param name="inputs">An array of input values to be processed by the model. Cannot be null.</param>
+        /// <returns>An array of output values resulting from processing the inputs. The length and content of the output depend
+        /// on the model's configuration.</returns>
         public double[] Forward(double[] inputs)
             => Forward(inputs, false);
 
+        /// <summary>
+        /// Propagates the input values forward through the network, computing activations for each layer.
+        /// </summary>
+        /// <remarks>This method computes the activations for each layer in the network sequentially,
+        /// starting from the input layer and ending with the output layer.  If batch normalization is enabled for a
+        /// layer, it is applied during the forward pass. Nonlinear activation functions are applied to each layer's
+        /// activations.</remarks>
+        /// <param name="inputs">An array of input values to be fed into the network. The length of the array must match the number of input
+        /// neurons in the first layer.</param>
+        /// <param name="isTraining">A boolean value indicating whether the network is in training mode. If <see langword="true"/>, certain
+        /// operations, such as batch normalization, may behave differently to account for training-specific
+        /// adjustments.</param>
+        /// <returns>An array of output values representing the activations of the final layer of the network.</returns>
         private double[] Forward(double[] inputs, bool isTraining)
         {
             State.Layers[0].Activations = inputs;
@@ -102,7 +124,7 @@ namespace NTDLS.Determinet
                 layer.Activations = // Weighted sum
                      ActivateLayer(State.Layers[i - 1].Activations, State.Synapses[i - 1].Weights, State.Synapses[i - 1].Biases);
 
-                if (layer.Parameters.Get(DniParameters.LayerParameters.UseBatchNorm, false))
+                if (layer.Parameters.Get(Layer.UseBatchNorm, false))
                 {
                     BatchNormalize(layer, isTraining);
                 }
@@ -126,7 +148,7 @@ namespace NTDLS.Determinet
             if (layer.Gamma == null || layer.Beta == null)
                 return;
 
-            double momentum = layer.Parameters.Get(DniParameters.LayerParameters.BatchNormMomentum, 0.2);
+            double momentum = layer.Parameters.Get(Layer.BatchNormMomentum, 0.2);
 
             // --- TRAINING ---
             if (isTraining)
@@ -157,10 +179,21 @@ namespace NTDLS.Determinet
             }
         }
 
-
         /// <summary>
-        /// Activates a layer
+        /// Computes the activation values for a layer in a neural network based on the provided inputs, weights, and
+        /// biases.
         /// </summary>
+        /// <remarks>This method performs a weighted sum of the inputs and biases for each neuron in the
+        /// layer, clamping the result to the range [-1e6, 1e6]. The computation is parallelized for improved
+        /// performance on large layers.</remarks>
+        /// <param name="inputs">An array of input values to the layer. The length of this array must match the number of rows in <paramref
+        /// name="weights"/>.</param>
+        /// <param name="weights">A 2D array representing the weights of the connections between the input layer and the current layer. The
+        /// number of rows must match the length of <paramref name="inputs"/>, and the number of columns must match the
+        /// length of <paramref name="biases"/>.</param>
+        /// <param name="biases">An array of bias values for the layer. The length of this array determines the size of the output layer.</param>
+        /// <returns>An array of activation values for the layer. The length of the returned array matches the length of
+        /// <paramref name="biases"/>.</returns>
         private static double[] ActivateLayer(double[] inputs, double[,] weights, double[] biases)
         {
             int layerSize = biases.Length;
@@ -184,8 +217,14 @@ namespace NTDLS.Determinet
         }
 
         /// <summary>
-        /// Cross-entropy loss derivative, used for SoftMax output activation function.
+        /// Computes the gradient of the cross-entropy loss function with respect to the predicted values.
         /// </summary>
+        /// <param name="predicted">An array of predicted probabilities, where each value represents the model's predicted probability for a
+        /// class. Values should be in the range [0, 1].</param>
+        /// <param name="actual">An array of actual class probabilities, where each value represents the true probability for a class.
+        /// Typically, this is a one-hot encoded array.</param>
+        /// <returns>An array representing the gradient of the cross-entropy loss for each class. Each value is the difference
+        /// between the predicted and actual probabilities.</returns>
         private static double[] CrossEntropyLossGradient(double[] predicted, double[] actual)
         {
             var gradient = new double[predicted.Length];
@@ -197,13 +236,21 @@ namespace NTDLS.Determinet
         }
 
         /// <summary>
-        /// Backpropagation for updating weights and biases
+        /// Performs the backpropagation algorithm to compute gradients and update the weights and biases of the neural
+        /// network based on the provided inputs and expected outputs.
         /// </summary>
+        /// <remarks>This method calculates the error for each layer of the neural network, starting from
+        /// the output layer and propagating backward through the hidden layers. The errors are used to adjust the
+        /// weights and biases of the network using gradient descent. If batch normalization is enabled, the method also
+        /// updates the batch normalization parameters (gamma and beta). <para> The method supports parallelization for
+        /// performance optimization during weight updates and error calculations. </para></remarks>
+        /// <param name="inputs">The input values fed into the neural network during the forward pass.</param>
+        /// <param name="actualOutput">The expected output values used to calculate the error during backpropagation.</param>
         private void Backpropagate(double[] inputs, double[] actualOutput)
         {
             List<double[]>? errors;
 
-            if (State.Layers.Last().ActivationFunction is DniSoftMaxFunction)
+            if (State.Layers.Last().ActivationFunction is DniSimpleSoftMaxFunction)
             {
                 var outputError = CrossEntropyLossGradient(State.Layers.Last().Activations, actualOutput);
                 errors = new List<double[]> { outputError };
@@ -240,7 +287,6 @@ namespace NTDLS.Determinet
                 errors.Insert(0, layerError);
             }
 
-
             // Update weights and biases with gradient descent
             for (int i = 0; i < State.Synapses.Count; i++)
             {
@@ -268,7 +314,7 @@ namespace NTDLS.Determinet
                 }
 
                 // --- BatchNorm parameter updates (γ and β) ---
-                if (State.Layers[i + 1].Parameters.Get(DniParameters.LayerParameters.UseBatchNorm, false))
+                if (State.Layers[i + 1].Parameters.Get(Layer.UseBatchNorm, false))
                 {
                     var bnLayer = State.Layers[i + 1];
                     if (bnLayer.Gamma != null && bnLayer.Beta != null)
@@ -295,10 +341,12 @@ namespace NTDLS.Determinet
         }
 
         /// <summary>
-        /// Training function for single epoch.
-        /// Returns loss with SoftMax + cross-entropy,
-        /// The loss is a measure of how surprised the model is by the correct answer.
+        /// Trains the model using the provided input data and expected output values.
         /// </summary>
+        /// <param name="inputs">An array of input values representing the features for training.</param>
+        /// <param name="expected">An array of expected output values corresponding to the inputs.</param>
+        /// <returns>The computed loss value, which quantifies the difference between the model's predictions and the expected outputs.</returns>
+        /// <exception cref="Exception">Thrown if the learning rate is less than or equal to zero.</exception>
         public double Train(double[] inputs, double[] expected)
         {
             if (State.LearningRate <= 0)
@@ -313,6 +361,17 @@ namespace NTDLS.Determinet
             return loss;
         }
 
+        /// <summary>
+        /// Calculates the cross-entropy loss between the predicted probabilities and the expected values.
+        /// </summary>
+        /// <remarks>The method ensures numerical stability by clamping the predicted probabilities to
+        /// avoid logarithms of zero.</remarks>
+        /// <param name="predicted">An array of predicted probabilities, where each value represents the model's confidence for a specific
+        /// class. Each value must be in the range [0, 1].</param>
+        /// <param name="expected">An array of expected values, where each value represents the true probability for a specific class. Each
+        /// value must be in the range [0, 1].</param>
+        /// <returns>The cross-entropy loss as a non-negative double value. A lower value indicates better alignment between the
+        /// predicted and expected probabilities.</returns>
         private static double CrossEntropy(double[] predicted, double[] expected)
         {
             const double EPS = 1e-12; // prevent log(0)
@@ -325,6 +384,13 @@ namespace NTDLS.Determinet
             return loss;
         }
 
+        /// <summary>
+        /// Saves the current state to a file at the specified path.
+        /// </summary>
+        /// <remarks>The state is serialized and compressed before being written to the file.  Ensure that
+        /// the specified file path is valid and accessible to avoid exceptions.</remarks>
+        /// <param name="filePath">The full path of the file where the state will be saved. The directory must exist, and the caller must have
+        /// write permissions.</param>
         public void SaveToFile(string filePath)
         {
             foreach (var synapse in State.Synapses)
@@ -335,6 +401,16 @@ namespace NTDLS.Determinet
             Serializer.Serialize(zip, State);
         }
 
+        /// <summary>
+        /// Loads a <see cref="DniNeuralNetwork"/> from a file containing its serialized state.
+        /// </summary>
+        /// <remarks>This method expects the file to contain a compressed serialized representation of the
+        /// neural network's state. The method will decompress the file, deserialize the state, and reconstruct the
+        /// neural network, including reinitializing any necessary runtime components such as activation functions and
+        /// synapse connections.</remarks>
+        /// <param name="filePath">The path to the file that contains the serialized state of the neural network. Must be a valid file path and
+        /// point to an existing file.</param>
+        /// <returns>A <see cref="DniNeuralNetwork"/> instance reconstructed from the serialized state in the specified file.</returns>
         public static DniNeuralNetwork LoadFromFile(string filePath)
         {
             using var fs = File.OpenRead(filePath);

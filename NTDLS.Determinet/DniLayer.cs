@@ -2,6 +2,7 @@
 using NTDLS.Determinet.ActivationFunctions.Interfaces;
 using NTDLS.Determinet.Types;
 using ProtoBuf;
+using static NTDLS.Determinet.DniParameters;
 
 namespace NTDLS.Determinet
 {
@@ -54,7 +55,7 @@ namespace NTDLS.Determinet
             Activations = new double[nodeCount];
             InstantiateActivationFunction();
 
-            if (Parameters.Get(DniParameters.LayerParameters.UseBatchNorm, false))
+            if (Parameters.Get(Layer.UseBatchNorm, false))
             {
                 Gamma = Enumerable.Repeat(1.0, NodeCount).ToArray();
                 Beta = new double[NodeCount];
@@ -82,7 +83,7 @@ namespace NTDLS.Determinet
             Activations = new double[nodeCount];
             InstantiateActivationFunction();
 
-            if (Parameters.Get(DniParameters.LayerParameters.UseBatchNorm, false))
+            if (Parameters.Get(Layer.UseBatchNorm, false))
             {
                 Gamma = Enumerable.Repeat(1.0, NodeCount).ToArray();
                 Beta = new double[NodeCount];
@@ -129,6 +130,7 @@ namespace NTDLS.Determinet
                 DniActivationType.Tanh => new DniTanhFunction(Parameters),
                 DniActivationType.LeakyReLU => new DniLeakyReLUFunction(Parameters),
                 DniActivationType.SoftMax => new DniSoftMaxFunction(Parameters),
+                DniActivationType.SimpleSoftMax => new DniSimpleSoftMaxFunction(Parameters),
                 _ => throw new NotImplementedException($"Unknown activation type: [{ActivationType}].")
             };
         }
