@@ -11,6 +11,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TestHarnessDraw", "TestHarn
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GenImages", "GenImages\GenImages.csproj", "{744FE4EC-A231-498A-9E43-C3A35E70230D}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OCR", "OCR\OCR.csproj", "{88729FA9-B4DF-4FBE-9C89-14BAA2FD7462}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -33,6 +35,10 @@ Global
 		{744FE4EC-A231-498A-9E43-C3A35E70230D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{744FE4EC-A231-498A-9E43-C3A35E70230D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{744FE4EC-A231-498A-9E43-C3A35E70230D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{88729FA9-B4DF-4FBE-9C89-14BAA2FD7462}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{88729FA9-B4DF-4FBE-9C89-14BAA2FD7462}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{88729FA9-B4DF-4FBE-9C89-14BAA2FD7462}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{88729FA9-B4DF-4FBE-9C89-14BAA2FD7462}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

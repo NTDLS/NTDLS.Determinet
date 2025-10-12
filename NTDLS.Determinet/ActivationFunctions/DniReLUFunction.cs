@@ -1,4 +1,5 @@
 ﻿using NTDLS.Determinet.ActivationFunctions.Interfaces;
+using NTDLS.Determinet.Types;
 
 namespace NTDLS.Determinet.ActivationFunctions
 {
@@ -10,6 +11,10 @@ namespace NTDLS.Determinet.ActivationFunctions
     /// non-linearity.</remarks>
     public class DniReLUFunction : IDniActivationFunction
     {
+        public DniReLUFunction(DniNamedFunctionParameters param)
+        {
+        }
+
         public double[] Activation(double[] nodes)
         {
             return nodes.Select(o => o > 0 ? o : 0).ToArray();

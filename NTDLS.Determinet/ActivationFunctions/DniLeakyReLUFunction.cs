@@ -1,6 +1,6 @@
 ﻿using NTDLS.Determinet.ActivationFunctions.Interfaces;
 using NTDLS.Determinet.Types;
-using ProtoBuf;
+using static NTDLS.Determinet.DniParameters;
 
 namespace NTDLS.Determinet.ActivationFunctions
 {
@@ -13,16 +13,11 @@ namespace NTDLS.Determinet.ActivationFunctions
     /// determined by the <see cref="Alpha"/> parameter.</remarks>
     public class DniLeakyReLUFunction : IDniActivationFunction
     {
-        [ProtoMember(1)]
-        public double Alpha { get; private set; } = 0.01; //Linear slope value.
-
-        public DniLeakyReLUFunction()
-        {
-        }
+        public double Alpha { get; private set; }
 
         public DniLeakyReLUFunction(DniNamedFunctionParameters param)
         {
-            Alpha = param.Get("Alpha", 0.01);
+            Alpha = param.Get(LayerParameters.LeakyReLUAlpha, 0.01);
         }
 
         public double[] Activation(double[] nodes)

@@ -8,7 +8,7 @@ namespace NTDLS.Determinet.ActivationFunctions
     /// </summary>
     public class DniIdentityFunction : IDniActivationFunction
     {
-        public DniIdentityFunction(DniNamedFunctionParameters? param)
+        public DniIdentityFunction(DniNamedFunctionParameters param)
         {
         }
 

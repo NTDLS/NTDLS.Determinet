@@ -1,4 +1,5 @@
 ﻿using NTDLS.Determinet.ActivationFunctions.Interfaces;
+using NTDLS.Determinet.Types;
 
 namespace NTDLS.Determinet.ActivationFunctions
 {
@@ -10,6 +11,10 @@ namespace NTDLS.Determinet.ActivationFunctions
     /// which is often used during backpropagation in training neural networks.</remarks>
     public class DniSigmoidFunction : IDniActivationFunction
     {
+        public DniSigmoidFunction(DniNamedFunctionParameters param)
+        {
+        }
+
         public double[] Activation(double[] nodes)
         {
             return nodes.Select(o => 1.0 / (1.0 + Math.Exp(-o))).ToArray();

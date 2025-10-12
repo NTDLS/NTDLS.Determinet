@@ -9,18 +9,23 @@
             /// </summary>
             public const string UseBatchNorm = "UseBatchNorm";
             /// <summary>
-            /// Represents the configuration key for enabling the use of Kaiming initialization in batch normalization layers
-            /// which will auto-scale the gamma parameter based on the layer's node count.
+            /// In BatchNorm, “momentum” controls how quickly the running mean and variance adapt to the most recent batch statistics during training.
             /// </summary>
-            public const string BatchNormUseKaiming = "BatchNormUseKaiming";
+            public const string BatchNormMomentum = "BatchNormMomentum";
+
             /// <summary>
-            /// Represents the name of the gamma parameter used in batch normalization layers.
+            /// Temperature scaling factor for SoftMax activation function.
+            /// Higher values soften probabilities; lower values sharpen them.
             /// </summary>
-            public const string BatchNormGamma = "BatchNormGamma";
+            public const string SoftMaxTemperature = "SoftMaxTemperature";
+
             /// <summary>
-            /// Represents the key used to identify the beta parameter in a batch normalization operation.
+            /// Represents the parameter name for the alpha value used in the Leaky ReLU activation function.
             /// </summary>
-            public const string BatchNormBeta = "BatchNormBeta";
+            /// <remarks>The alpha value determines the slope of the function for negative input
+            /// values in the Leaky ReLU activation function. This constant can be used as a key or identifier in
+            /// contexts where the alpha parameter needs to be specified or retrieved.</remarks>
+            public const string LeakyReLUAlpha = "LeakyReLUAlpha";
         }
     }
 }

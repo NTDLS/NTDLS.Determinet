@@ -5,16 +5,17 @@ using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
+using static NTDLS.Determinet.DniParameters;
 
 namespace TestHarness
 {
     internal class Program
     {
-        const double _initialLearningRate = 0.0005; // Starting learning rate for training.
+        const double _initialLearningRate = 0.005;  // Starting learning rate for training.
         const double _convergence = 0.000000001;    // Threshold for considering the training has converged.
-        const int _cooldown = 2;                    // epochs to wait after each learning rate decay.
-        const int _patience = 3;                    // Number of epochs to wait before reducing learning rate once cost starts increasing or reaches a plateau.
-        const double _decayFactor = 0.5;            // Factor to reduce learning rate
+        const int _cooldown = 5;                    // epochs to wait after each learning rate decay.
+        const int _patience = 5;                    // Number of epochs to wait before reducing learning rate once cost starts increasing or reaches a plateau.
+        const double _decayFactor = 0.8;            // Factor to reduce learning rate
         const int _trainingEpochs = 250;            // Total number of training epochs
         const int _imageWidth = 64;                 // Downscale for faster processing with minimal quality loss.
         const int _imageHeight = 64;                // Downscale for faster processing with minimal quality loss.
@@ -22,6 +23,9 @@ namespace TestHarness
         const double _minDelta = 0.001;             // minimum improvement threshold
         const int _earlyStopPatience = 10;          // epochs with no improvement before stopping
         const int _earlyStopMinEpochs = 10;         // minimum epochs before we even consider stopping
+        const double _minLearningRate = 0.000001;
+        const double _slop = 0.000000000001;
+
 
         static void Main()
         {
@@ -157,13 +161,14 @@ namespace TestHarness
 
                 configuration.AddInputLayer(_imageWidth * _imageHeight);
 
-                var layerParam = new DniNamedFunctionParameters();
-                //ayerParam.Set(DniParameters.LayerParameters.UseBatchNorm, true);
-                //layerParam.Set(DniParameters.LayerParameters.BatchNormUseKaiming, true);
+                var leakyReLUParam = new DniNamedFunctionParameters();
+                //leakyReLUParam.Set(LayerParameters.UseBatchNorm, true);
+                //layerParam.Set(DniParameters.LayerParameters.BatchNormMomentum, 0.9);
 
                 //MLPs: 2–3 hidden layers, 128–512 units each, tapering (512, 256, 128).
-                configuration.AddIntermediateLayer(512, DniActivationType.LeakyReLU);
-                configuration.AddIntermediateLayer(256, DniActivationType.LeakyReLU, layerParam);
+                configuration.AddIntermediateLayer(768, DniActivationType.LeakyReLU);
+                configuration.AddIntermediateLayer(512, DniActivationType.LeakyReLU, leakyReLUParam);
+                configuration.AddIntermediateLayer(256, DniActivationType.LeakyReLU);
                 configuration.AddIntermediateLayer(128, DniActivationType.LeakyReLU);
 
                 /*//Example of adding parameters for a layer activation function:
@@ -173,7 +178,9 @@ namespace TestHarness
                 configuration.AddIntermediateLayer(280, DniActivationType.PiecewiseLinear, piecewiseLinearParam);
                 */
 
-                configuration.AddOutputLayer(_outputNodes, DniActivationType.SoftMax);
+                var softMaxParam = new DniNamedFunctionParameters();
+                //softMaxParam.Set(LayerParameters.SoftMaxTemperature, 5.5);
+                configuration.AddOutputLayer(_outputNodes, DniActivationType.SoftMax, softMaxParam);
 
                 dni = new DniNeuralNetwork(configuration);
             }
@@ -272,13 +279,12 @@ namespace TestHarness
                 }
                 else
                 {
-                    if (epochsSinceImprovement >= _patience)
+                    if (epochsSinceImprovement >= _patience && learningRate > _minLearningRate + _slop)
                     {
-                        learningRate *= _decayFactor;
+                        var newLR = learningRate * _decayFactor;
+                        learningRate = Math.Max(_minLearningRate, newLR);
                         cooldownCounter = _cooldown;
-
-                        Console.WriteLine(
-                            $"[LR Scheduler] Plateau detected (best={bestLoss:n4}, current={epochLoss:n4}). Reducing LR -> {learningRate:n6}");
+                        Console.WriteLine($"[LR Scheduler] Plateau (best={bestLoss:n4}, current={epochLoss:n4}). Reducing LR -> {learningRate:n6}");
                     }
                 }
 
@@ -362,18 +368,18 @@ namespace TestHarness
             int offsetY = (squareSize - cropHeight) / 2;
             squareCanvas.Mutate(ctx => ctx.DrawImage(cropped, new Point(offsetX, offsetY), 1f));
 
-            // Small random rotation (for consistency with training)
-            int randomAngle = DniUtility.Random.Next(-rotationAngleRange, rotationAngleRange);
-            squareCanvas.Mutate(ctx => ctx.Rotate(randomAngle));
-
             int angle = DniUtility.Random.Next(-rotationAngleRange, rotationAngleRange);
-
-            // rotate (this will create transparent corners)
+            // Small random rotation (for consistency with training)
             using var rotated = squareCanvas.Clone(ctx => ctx.Rotate(angle));
 
             // flatten the transparency onto a white background
             using var flattened = new Image<Rgba32>(rotated.Width, rotated.Height, Color.White);
-            flattened.Mutate(ctx => ctx.DrawImage(rotated, new Point(0, 0), 1f));
+            int shiftX = DniUtility.Random.Next(-3, 3);
+            int shiftY = DniUtility.Random.Next(-3, 3);
+            //Draw rotated image onto white background with a small random shift in position:
+            flattened.Mutate(ctx => ctx.DrawImage(rotated, new Point(shiftX, shiftY), 1f));
+
+            squareCanvas.Mutate(ctx => ctx.GaussianBlur(DniUtility.Random.Next(4, 8)));
 
             using var resized = flattened.Clone(ctx => ctx.Resize(resizeWidth, resizeHeight));
 

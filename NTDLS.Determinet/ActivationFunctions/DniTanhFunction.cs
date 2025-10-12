@@ -1,4 +1,5 @@
 ﻿using NTDLS.Determinet.ActivationFunctions.Interfaces;
+using NTDLS.Determinet.Types;
 
 namespace NTDLS.Determinet.ActivationFunctions
 {
@@ -10,6 +11,10 @@ namespace NTDLS.Determinet.ActivationFunctions
     /// network layers. The derivative is used during backpropagation to compute gradients.</remarks>
     public class DniTanhFunction : IDniActivationFunction
     {
+        public DniTanhFunction(DniNamedFunctionParameters param)
+        {
+        }
+
         public double[] Activation(double[] nodes)
         {
             return nodes.Select(o => (double)Math.Tanh(o)).ToArray();

@@ -22,6 +22,11 @@ namespace NTDLS.Determinet
             set => State.LearningRate = value;
         }
 
+        private static readonly ParallelOptions _parallelOpts = new()
+        {
+            MaxDegreeOfParallelism = Environment.ProcessorCount
+        };
+
         [ProtoMember(2)] public DniStateOfBeing State { get; private set; } = new();
 
         public DniNeuralNetwork(DniConfiguration configuration)
@@ -66,7 +71,8 @@ namespace NTDLS.Determinet
                 {
                     for (int k = 0; k < nextSize; k++)
                     {
-                        layerWeights[j, k] = DniUtility.Random.NextDouble() - 0.5;
+                        double std = Math.Sqrt(2.0 / currentSize); // He init
+                        layerWeights[j, k] = DniUtility.NextGaussian(0, std);
                     }
                 }
 
@@ -83,6 +89,9 @@ namespace NTDLS.Determinet
         /// Forward pass through the network
         /// </summary>
         public double[] Forward(double[] inputs)
+            => Forward(inputs, false);
+
+        private double[] Forward(double[] inputs, bool isTraining)
         {
             State.Layers[0].Activations = inputs;
 
@@ -95,7 +104,7 @@ namespace NTDLS.Determinet
 
                 if (layer.Parameters.Get(DniParameters.LayerParameters.UseBatchNorm, false))
                 {
-                    BatchNormalize(layer);
+                    BatchNormalize(layer, isTraining);
                 }
 
                 // Nonlinear activation
@@ -105,8 +114,6 @@ namespace NTDLS.Determinet
             return State.Layers.Last().Activations;
         }
 
-
-
         /// <summary>
         /// Normalizes the values in the specified array of activations using batch normalization.
         /// </summary>
@@ -114,24 +121,42 @@ namespace NTDLS.Determinet
         /// have a mean of 0 and a standard deviation of 1, followed by optional scaling and shifting.  The
         /// normalization is performed in place, modifying the original array.</remarks>
         /// <param name="activations">An array of activation values to be normalized. The array is modified in place.</param>
-        private static void BatchNormalize(DniLayer layer)
+        private static void BatchNormalize(DniLayer layer, bool isTraining)
         {
-            double mean = layer.Activations.Average();
-            double variance = layer.Activations.Select(a => Math.Pow(a - mean, 2)).Average();
-            double stdDev = Math.Sqrt(variance + 1e-8);
+            if (layer.Gamma == null || layer.Beta == null)
+                return;
 
-            double gamma;
+            double momentum = layer.Parameters.Get(DniParameters.LayerParameters.BatchNormMomentum, 0.2);
 
-            if (layer.Parameters.Get(DniParameters.LayerParameters.BatchNormUseKaiming, false))
-                gamma = layer.Parameters.Get(DniParameters.LayerParameters.BatchNormGamma, 1.0 / Math.Sqrt(layer.NodeCount));
+            // --- TRAINING ---
+            if (isTraining)
+            {
+                // Compute global batch statistics for this layer.
+                double batchMean = layer.Activations.Average();
+                double batchVar = layer.Activations.Select(a => Math.Pow(a - batchMean, 2)).Average();
+
+                // Update running stats (EMA)
+                layer.RunningMean = momentum * layer.RunningMean + (1 - momentum) * batchMean;
+                layer.RunningVariance = momentum * layer.RunningVariance + (1 - momentum) * batchVar;
+
+                // Normalize using batch statistics.
+                double stdDev = Math.Sqrt(batchVar + 1e-8);
+                for (int i = 0; i < layer.Activations.Length; i++)
+                {
+                    layer.Activations[i] = layer.Gamma[i] * ((layer.Activations[i] - batchMean) / stdDev) + layer.Beta[i];
+                }
+            }
+            // --- INFERENCE ---
             else
-                gamma = layer.Parameters.Get(DniParameters.LayerParameters.BatchNormGamma, 1);  // scale
-
-            double beta = layer.Parameters.Get(DniParameters.LayerParameters.BatchNormBeta, 0);  // shift
-
-            for (int i = 0; i < layer.Activations.Length; i++)
-                layer.Activations[i] = gamma * ((layer.Activations[i] - mean) / stdDev) + beta;
+            {
+                double stdDev = Math.Sqrt(layer.RunningVariance + 1e-8);
+                for (int i = 0; i < layer.Activations.Length; i++)
+                {
+                    layer.Activations[i] = layer.Gamma[i] * ((layer.Activations[i] - layer.RunningMean) / stdDev) + layer.Beta[i];
+                }
+            }
         }
+
 
         /// <summary>
         /// Activates a layer
@@ -158,7 +183,6 @@ namespace NTDLS.Determinet
             return output;
         }
 
-
         /// <summary>
         /// Cross-entropy loss derivative, used for SoftMax output activation function.
         /// </summary>
@@ -177,8 +201,6 @@ namespace NTDLS.Determinet
         /// </summary>
         private void Backpropagate(double[] inputs, double[] actualOutput)
         {
-            Forward(inputs);
-
             List<double[]>? errors;
 
             if (State.Layers.Last().ActivationFunction is DniSoftMaxFunction)
@@ -244,13 +266,33 @@ namespace NTDLS.Determinet
                 {
                     biases[j] -= lr * error[j];
                 }
+
+                // --- BatchNorm parameter updates (γ and β) ---
+                if (State.Layers[i + 1].Parameters.Get(DniParameters.LayerParameters.UseBatchNorm, false))
+                {
+                    var bnLayer = State.Layers[i + 1];
+                    if (bnLayer.Gamma != null && bnLayer.Beta != null)
+                    {
+                        var layerError = errors[i];
+                        var batchMean = bnLayer.Activations.Average();
+                        var batchVar = bnLayer.Activations.Select(a => Math.Pow(a - batchMean, 2)).Average();
+                        var stdDev = Math.Sqrt(batchVar + 1e-8);
+
+                        int nodeCount = Math.Min(bnLayer.NodeCount, layerError.Length);
+                        for (int j = 0; j < nodeCount; j++)
+                        {
+                            var normalized = (bnLayer.Activations[j] - batchMean) / stdDev;
+
+                            bnLayer.Gamma[j] -= lr * layerError[j] * normalized;
+                            bnLayer.Beta[j] -= lr * layerError[j];
+
+                            bnLayer.Gamma[j] -= 1e-5 * (bnLayer.Gamma[j] - 1.0);
+                            bnLayer.Gamma[j] = Math.Clamp(bnLayer.Gamma[j], 0.01, 10.0);
+                        }
+                    }
+                }
             }
         }
-
-        private static readonly ParallelOptions _parallelOpts = new()
-        {
-            MaxDegreeOfParallelism = Environment.ProcessorCount
-        };
 
         /// <summary>
         /// Training function for single epoch.
@@ -262,7 +304,7 @@ namespace NTDLS.Determinet
             if (State.LearningRate <= 0)
                 throw new Exception("Learning rate must be greater than zero.");
 
-            var predictions = Forward(inputs);
+            var predictions = Forward(inputs, true);
 
             // Compute numerically-stable loss
             double loss = CrossEntropy(predictions, expected);

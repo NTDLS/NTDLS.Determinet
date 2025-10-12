@@ -1,6 +1,5 @@
 ﻿using NTDLS.Determinet.ActivationFunctions.Interfaces;
 using NTDLS.Determinet.Types;
-using ProtoBuf;
 
 namespace NTDLS.Determinet.ActivationFunctions
 {
@@ -13,15 +12,10 @@ namespace NTDLS.Determinet.ActivationFunctions
     /// value. - For inputs greater than or equal to the maximum of the range, the output is also scaled by the slope
     /// value. - For inputs within the range, the output is equal to the input.  The derivative of the function is
     /// constant outside the range (equal to the slope) and 1 within the range.</remarks>
-    [ProtoContract]
     public class DniPiecewiseLinearFunction : IDniActivationFunction
     {
-        [ProtoMember(1)]
         public double Alpha { get; private set; } = 0.1; //Linear slope value.
-
-        [ProtoMember(2)]
         public DniRange Range { get; private set; } = new DniRange(-1, +1); //Function output range.
-
 
         public DniPiecewiseLinearFunction(DniNamedFunctionParameters param)
         {

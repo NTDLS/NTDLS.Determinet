@@ -1,4 +1,5 @@
 ﻿using NTDLS.Determinet.ActivationFunctions.Interfaces;
+using NTDLS.Determinet.Types;
 
 namespace NTDLS.Determinet.ActivationFunctions
 {
@@ -12,6 +13,10 @@ namespace NTDLS.Determinet.ActivationFunctions
     /// values.</remarks>
     public class DniSoftMaxFunction : IDniActivationFunction
     {
+        public DniSoftMaxFunction(DniNamedFunctionParameters param)
+        {
+        }
+
         public double[] Activation(double[] nodes)
         {
             double max = nodes.Max();

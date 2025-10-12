@@ -1,6 +1,5 @@
 ﻿using NTDLS.Determinet.ActivationFunctions.Interfaces;
 using NTDLS.Determinet.Types;
-using ProtoBuf;
 
 namespace NTDLS.Determinet.ActivationFunctions
 {
@@ -11,13 +10,10 @@ namespace NTDLS.Determinet.ActivationFunctions
     /// the  <see cref="Alpha"/> parameter. The output is clamped to the specified <see cref="Range"/> to ensure  it
     /// remains within the defined bounds. This function is commonly used in neural network models where  a simple
     /// linear transformation is required.</remarks>
-    [ProtoContract]
     public class DniLinearFunction : IDniActivationFunction
     {
-        [ProtoMember(1)]
         public double Alpha { get; private set; } = 1; //Linear slope value.
 
-        [ProtoMember(2)]
         public DniRange Range { get; private set; } = new DniRange(-1, +1); //Function output range.
 
         public DniLinearFunction(DniNamedFunctionParameters param)

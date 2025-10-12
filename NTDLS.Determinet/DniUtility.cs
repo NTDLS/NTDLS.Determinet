@@ -28,6 +28,15 @@ namespace NTDLS.Determinet
             }
         }
 
+        public static double NextGaussian(double mean = 0, double stdDev = 1)
+        {
+            // Use Box-Muller transform to generate a normally distributed value
+            double u1 = 1.0 - Random.NextDouble(); // Uniform(0,1] random doubles
+            double u2 = 1.0 - Random.NextDouble();
+            double randStdNormal = Math.Sqrt(-2.0 * Math.Log(u1)) * Math.Sin(2.0 * Math.PI * u2); // Standard normal (0,1)
+            return mean + stdDev * randStdNormal; // Scale and shift to desired mean and standard deviation
+        }
+
         public static int IndexOfMaxValue(double[] values, out double confidence)
         {
             int maxIndex = 0;

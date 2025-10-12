@@ -29,6 +29,12 @@ namespace NTDLS.Determinet
         [ProtoMember(3)] public DniNamedFunctionParameters Parameters { get; private set; }
         [ProtoMember(4)] public DniActivationType ActivationType { get; private set; }
 
+        // [RunningMean], [RunningVariance], [Gamma], and [Beta] are used for Batch Normalization in BatchNormalize().
+        [ProtoMember(5)] public double RunningMean { get; set; }
+        [ProtoMember(6)] public double RunningVariance { get; set; }
+        [ProtoMember(7)] public double[]? Gamma { get; set; }
+        [ProtoMember(8)] public double[]? Beta { get; set; }
+
         /// <summary>
         /// Initializes a new instance of the <see cref="DniLayer"/> class with the specified layer type, node count,
         /// activation type, and parameters.
@@ -47,6 +53,14 @@ namespace NTDLS.Determinet
             ActivationType = activationType;
             Activations = new double[nodeCount];
             InstantiateActivationFunction();
+
+            if (Parameters.Get(DniParameters.LayerParameters.UseBatchNorm, false))
+            {
+                Gamma = Enumerable.Repeat(1.0, NodeCount).ToArray();
+                Beta = new double[NodeCount];
+                RunningMean = 0.0;
+                RunningVariance = 1.0;
+            }
         }
 
         /// <summary>
@@ -67,6 +81,14 @@ namespace NTDLS.Determinet
             ActivationType = DniActivationType.None;
             Activations = new double[nodeCount];
             InstantiateActivationFunction();
+
+            if (Parameters.Get(DniParameters.LayerParameters.UseBatchNorm, false))
+            {
+                Gamma = Enumerable.Repeat(1.0, NodeCount).ToArray();
+                Beta = new double[NodeCount];
+                RunningMean = 0.0;
+                RunningVariance = 1.0;
+            }
         }
 
         public DniLayer()
@@ -100,13 +122,13 @@ namespace NTDLS.Determinet
             {
                 DniActivationType.None => null,
                 DniActivationType.Identity => new DniIdentityFunction(Parameters),
-                DniActivationType.ReLU => new DniReLUFunction(),
+                DniActivationType.ReLU => new DniReLUFunction(Parameters),
                 DniActivationType.PiecewiseLinear => new DniPiecewiseLinearFunction(Parameters),
                 DniActivationType.Linear => new DniLinearFunction(Parameters),
-                DniActivationType.Sigmoid => new DniSigmoidFunction(),
-                DniActivationType.Tanh => new DniTanhFunction(),
-                DniActivationType.LeakyReLU => new DniLeakyReLUFunction(),
-                DniActivationType.SoftMax => new DniSoftMaxFunction(),
+                DniActivationType.Sigmoid => new DniSigmoidFunction(Parameters),
+                DniActivationType.Tanh => new DniTanhFunction(Parameters),
+                DniActivationType.LeakyReLU => new DniLeakyReLUFunction(Parameters),
+                DniActivationType.SoftMax => new DniSoftMaxFunction(Parameters),
                 _ => throw new NotImplementedException($"Unknown activation type: [{ActivationType}].")
             };
         }

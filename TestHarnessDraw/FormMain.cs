@@ -116,6 +116,12 @@ namespace TestHarnessDraw
                 series.Points.Add(point);
             }
 
+            series.Points[0].Color = Color.OrangeRed;
+            series.Points[1].Color = Color.Orange;
+            series.Points[2].Color = Color.Gold;
+            for (int i = 3; i < series.Points.Count; i++)
+                series.Points[i].Color = Color.LightGray;
+
             // Adjust axes for better spacing
             var area = chartPredictions.ChartAreas[0];
             area.AxisX.Interval = 1;
@@ -205,6 +211,8 @@ namespace TestHarnessDraw
             int offsetY = (squareSize - cropHeight) / 2;
             squareCanvas.Mutate(ctx => ctx.DrawImage(cropped, new SixLabors.ImageSharp.Point(offsetX, offsetY), 1f));
 
+            squareCanvas.Mutate(ctx => ctx.GaussianBlur(DniUtility.Random.Next(4, 8)));
+
             using var resized = squareCanvas.Clone(ctx => ctx.Resize(resizeWidth, resizeHeight));
 
             pictureBoxAiView.Image = ToBitmap(resized);
@@ -259,7 +267,6 @@ namespace TestHarnessDraw
             {
                 layer.Parameters.Remove("UseBatchNorm");
             }
-
         }
 
         private void ButtonLoadImage_Click(object sender, EventArgs e)
