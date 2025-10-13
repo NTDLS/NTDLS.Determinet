@@ -1,6 +1,6 @@
 ﻿using System.Drawing.Drawing2D;
 
-namespace TestHarnessDraw
+namespace TestHarness.Draw
 {
     public partial class SimpleDrawControl : UserControl
     {

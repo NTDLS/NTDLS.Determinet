@@ -1,4 +1,4 @@
-﻿namespace TestHarness
+﻿namespace TestHarness.Library
 {
     public class TrainingModel(string fileName, double[] expectation)
     {

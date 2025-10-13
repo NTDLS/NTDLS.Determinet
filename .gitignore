@@ -18,3 +18,15 @@ GenImages/obj/
 OCR/bin/
 
 OCR/obj/
+
+TestHarness.Draw/bin/
+
+TestHarness.Draw/obj/
+
+TestHarness.Library/bin/
+
+TestHarness.Library/obj/
+
+TestHarness.Train/bin/
+
+TestHarness.Train/obj/

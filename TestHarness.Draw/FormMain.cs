@@ -1,21 +1,14 @@
 using NTDLS.Determinet;
-using SixLabors.ImageSharp.Processing;
+using NTDLS.Determinet.Types;
 using System.Drawing.Imaging;
 using System.Windows.Forms.DataVisualization.Charting;
+using TestHarness.Library;
 
-namespace TestHarnessDraw
+namespace TestHarness.Draw
 {
     public partial class FormMain : Form
     {
-        private char[] distinctCharacters = new char[] {
-                '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
-                'a', 'b', 'c', 'd', 'e', 'f','g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
-                'A', 'B', 'C', 'D', 'E', 'F','G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'
-            };
-
         private DniNeuralNetwork? _dni;
-        const int _imageWidth = 64;              // Downscale for faster processing with minimal quality loss.
-        const int _imageHeight = 64;             // Downscale for faster processing with minimal quality loss.
 
         public int BrushSize => trackBarBrushSize.Value;
 
@@ -48,7 +41,16 @@ namespace TestHarnessDraw
 
         private void Timer_Tick(object? sender, EventArgs e)
         {
-            var inputBits = GetImageGrayscaleBytes(_imageWidth, _imageHeight);
+            var bitmap = simpleDrawControl.GetDrawingBitmap();
+
+            var image = ConvertBitmapToImageSharp(bitmap);
+
+            var inputBits = Library.ImageUtility.GetImageGrayscaleBytes(image, Constants.ImageWidth, Constants.ImageHeight, DniRange<int>.Zero, DniRange<int>.Zero, new DniRange<int>(4, 8),
+                (img) =>
+                {
+                    var previewBmp = ToBitmap(img);
+                    pictureBoxAiView.Image = previewBmp;
+                });
 
             if (_dni != null && inputBits != null)
             {
@@ -57,10 +59,10 @@ namespace TestHarnessDraw
                     var outputs = _dni.Forward(inputBits);
                     var prediction = DniUtility.IndexOfMaxValue(outputs, out var confidence);
 
-                    textBoxDetected.Text = $"{distinctCharacters[prediction]}";
+                    textBoxDetected.Text = $"{Constants.NetworkOutputLabels[prediction]}";
                     textBoxConfidence.Text = $"{confidence:n4}";
 
-                    UpdateChart(outputs, distinctCharacters);
+                    UpdateChart(outputs, Constants.NetworkOutputLabels);
                 }
                 catch
                 {
@@ -156,91 +158,6 @@ namespace TestHarnessDraw
             return SixLabors.ImageSharp.Image.Load<SixLabors.ImageSharp.PixelFormats.Rgba32>(memoryStream);
         }
 
-        private double[]? GetImageGrayscaleBytes(int resizeWidth, int resizeHeight)
-        {
-            var bitmap = simpleDrawControl.GetDrawingBitmap();
-
-            // Load the image in RGB format and convert to RGBA.
-            using var img = ConvertBitmapToImageSharp(bitmap);
-
-            int width = img.Width;
-            int height = img.Height;
-
-            // Detect bounds of non-white pixels
-            int threshold = 250;
-            int left = width, right = 0, top = height, bottom = 0;
-
-            img.ProcessPixelRows(accessor =>
-            {
-                for (int y = 0; y < height; y++)
-                {
-                    var row = accessor.GetRowSpan(y);
-                    for (int x = 0; x < width; x++)
-                    {
-                        SixLabors.ImageSharp.PixelFormats.Rgba32 p = row[x];
-                        if (p.R < threshold || p.G < threshold || p.B < threshold)
-                        {
-                            if (x < left) left = x;
-                            if (x > right) right = x;
-                            if (y < top) top = y;
-                            if (y > bottom) bottom = y;
-                        }
-                    }
-                }
-            });
-
-            // No ink detected — blank image
-            if (right <= left || bottom <= top)
-                return null;
-
-            // Add margin and clamp to image edges
-            int margin = 5;
-            left = Math.Max(0, left - margin);
-            top = Math.Max(0, top - margin);
-            right = Math.Min(width - 1, right + margin);
-            bottom = Math.Min(height - 1, bottom + margin);
-
-            int cropWidth = right - left + 1;
-            int cropHeight = bottom - top + 1;
-
-            // Crop region of interest
-            var bounds = new SixLabors.ImageSharp.Rectangle(left, top, cropWidth, cropHeight);
-            using var cropped = img.Clone(ctx => ctx.Crop(bounds));
-
-            // Create a square white canvas (to center drawing)
-            int squareSize = Math.Max(cropWidth + (margin * 2), cropHeight + (margin * 2));
-            using var squareCanvas = new SixLabors.ImageSharp.Image<SixLabors.ImageSharp.PixelFormats.Rgba32>(squareSize, squareSize, SixLabors.ImageSharp.Color.White);
-
-            int offsetX = (squareSize - cropWidth) / 2;
-            int offsetY = (squareSize - cropHeight) / 2;
-            squareCanvas.Mutate(ctx => ctx.DrawImage(cropped, new SixLabors.ImageSharp.Point(offsetX, offsetY), 1f));
-
-            squareCanvas.Mutate(ctx => ctx.GaussianBlur(DniUtility.Random.Next(4, 8)));
-
-            using var resized = squareCanvas.Clone(ctx => ctx.Resize(resizeWidth, resizeHeight));
-
-            pictureBoxAiView.Image = ToBitmap(resized);
-
-            // Convert to grayscale and normalize [0..1]
-            var pixels = new double[resizeWidth * resizeHeight];
-            int index = 0;
-
-            resized.ProcessPixelRows(accessor =>
-            {
-                for (int y = 0; y < resizeHeight; y++)
-                {
-                    var row = accessor.GetRowSpan(y);
-                    for (int x = 0; x < resizeWidth; x++)
-                    {
-                        SixLabors.ImageSharp.PixelFormats.Rgba32 p = row[x];
-                        double gray = (0.299 * p.R + 0.587 * p.G + 0.114 * p.B) / 255.0;
-                        pixels[index++] = gray;
-                    }
-                }
-            });
-
-            return pixels;
-        }
 
         private void ButtonClear_Click(object sender, EventArgs e)
         {

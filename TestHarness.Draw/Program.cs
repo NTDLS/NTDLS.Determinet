@@ -1,4 +1,4 @@
-namespace TestHarnessDraw
+namespace TestHarness.Draw
 {
     internal static class Program
     {
