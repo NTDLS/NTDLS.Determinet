@@ -28,9 +28,8 @@
         /// </summary>
         private void InitializeComponent()
         {
-            System.Windows.Forms.DataVisualization.Charting.ChartArea chartArea2 = new System.Windows.Forms.DataVisualization.Charting.ChartArea();
-            System.Windows.Forms.DataVisualization.Charting.Legend legend2 = new System.Windows.Forms.DataVisualization.Charting.Legend();
-            System.Windows.Forms.DataVisualization.Charting.Series series2 = new System.Windows.Forms.DataVisualization.Charting.Series();
+            System.Windows.Forms.DataVisualization.Charting.ChartArea chartArea1 = new System.Windows.Forms.DataVisualization.Charting.ChartArea();
+            System.Windows.Forms.DataVisualization.Charting.Series series1 = new System.Windows.Forms.DataVisualization.Charting.Series();
             simpleDrawControl = new SimpleDrawControl();
             buttonClear = new Button();
             buttonLoadModel = new Button();
@@ -38,26 +37,28 @@
             labelDetected = new Label();
             pictureBoxAiView = new PictureBox();
             buttonLoadImage = new Button();
-            label1 = new Label();
             labelConfidence = new Label();
             textBoxConfidence = new TextBox();
             labelSanitized = new Label();
             chartPredictions = new System.Windows.Forms.DataVisualization.Charting.Chart();
+            trackBarBrushSize = new TrackBar();
+            labelBrushSize = new Label();
             ((System.ComponentModel.ISupportInitialize)pictureBoxAiView).BeginInit();
             ((System.ComponentModel.ISupportInitialize)chartPredictions).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)trackBarBrushSize).BeginInit();
             SuspendLayout();
             // 
             // simpleDrawControl
             // 
             simpleDrawControl.BackColor = Color.White;
-            simpleDrawControl.Location = new Point(24, 41);
+            simpleDrawControl.Location = new Point(12, 41);
             simpleDrawControl.Name = "simpleDrawControl";
-            simpleDrawControl.Size = new Size(400, 400);
+            simpleDrawControl.Size = new Size(400, 382);
             simpleDrawControl.TabIndex = 0;
             // 
             // buttonClear
             // 
-            buttonClear.Location = new Point(349, 447);
+            buttonClear.Location = new Point(226, 12);
             buttonClear.Name = "buttonClear";
             buttonClear.Size = new Size(75, 23);
             buttonClear.TabIndex = 1;
@@ -77,7 +78,7 @@
             // 
             // textBoxDetected
             // 
-            textBoxDetected.Location = new Point(430, 59);
+            textBoxDetected.Location = new Point(469, 97);
             textBoxDetected.Name = "textBoxDetected";
             textBoxDetected.ReadOnly = true;
             textBoxDetected.Size = new Size(92, 23);
@@ -86,16 +87,16 @@
             // labelDetected
             // 
             labelDetected.AutoSize = true;
-            labelDetected.Location = new Point(430, 41);
+            labelDetected.Location = new Point(469, 79);
             labelDetected.Name = "labelDetected";
-            labelDetected.Size = new Size(82, 15);
+            labelDetected.Size = new Size(54, 15);
             labelDetected.TabIndex = 4;
-            labelDetected.Text = "Detected Digit";
+            labelDetected.Text = "Detected";
             // 
             // pictureBoxAiView
             // 
             pictureBoxAiView.BackgroundImageLayout = ImageLayout.None;
-            pictureBoxAiView.Location = new Point(430, 163);
+            pictureBoxAiView.Location = new Point(469, 201);
             pictureBoxAiView.Name = "pictureBoxAiView";
             pictureBoxAiView.Size = new Size(128, 128);
             pictureBoxAiView.SizeMode = PictureBoxSizeMode.StretchImage;
@@ -104,7 +105,7 @@
             // 
             // buttonLoadImage
             // 
-            buttonLoadImage.Location = new Point(251, 447);
+            buttonLoadImage.Location = new Point(128, 12);
             buttonLoadImage.Name = "buttonLoadImage";
             buttonLoadImage.Size = new Size(92, 23);
             buttonLoadImage.TabIndex = 6;
@@ -112,19 +113,10 @@
             buttonLoadImage.UseVisualStyleBackColor = true;
             buttonLoadImage.Click += ButtonLoadImage_Click;
             // 
-            // label1
-            // 
-            label1.AutoSize = true;
-            label1.Location = new Point(128, 16);
-            label1.Name = "label1";
-            label1.Size = new Size(272, 15);
-            label1.TabIndex = 7;
-            label1.Text = "<- Load a trained model and then draw in the box.";
-            // 
             // labelConfidence
             // 
             labelConfidence.AutoSize = true;
-            labelConfidence.Location = new Point(430, 93);
+            labelConfidence.Location = new Point(469, 131);
             labelConfidence.Name = "labelConfidence";
             labelConfidence.Size = new Size(68, 15);
             labelConfidence.TabIndex = 9;
@@ -132,7 +124,7 @@
             // 
             // textBoxConfidence
             // 
-            textBoxConfidence.Location = new Point(430, 111);
+            textBoxConfidence.Location = new Point(469, 149);
             textBoxConfidence.Name = "textBoxConfidence";
             textBoxConfidence.ReadOnly = true;
             textBoxConfidence.Size = new Size(102, 23);
@@ -141,7 +133,7 @@
             // labelSanitized
             // 
             labelSanitized.AutoSize = true;
-            labelSanitized.Location = new Point(430, 145);
+            labelSanitized.Location = new Point(469, 183);
             labelSanitized.Name = "labelSanitized";
             labelSanitized.Size = new Size(54, 15);
             labelSanitized.TabIndex = 10;
@@ -149,37 +141,55 @@
             // 
             // chartPredictions
             // 
-            chartArea2.Name = "ChartArea1";
-            chartPredictions.ChartAreas.Add(chartArea2);
-            legend2.Name = "Legend1";
-            chartPredictions.Legends.Add(legend2);
-            chartPredictions.Location = new Point(594, 16);
+            chartArea1.Name = "ChartArea1";
+            chartPredictions.ChartAreas.Add(chartArea1);
+            chartPredictions.Location = new Point(611, 12);
             chartPredictions.Name = "chartPredictions";
-            series2.ChartArea = "ChartArea1";
-            series2.Legend = "Legend1";
-            series2.Name = "Series1";
-            chartPredictions.Series.Add(series2);
-            chartPredictions.Size = new Size(300, 300);
+            series1.ChartArea = "ChartArea1";
+            series1.Name = "Series1";
+            chartPredictions.Series.Add(series1);
+            chartPredictions.Size = new Size(197, 411);
             chartPredictions.TabIndex = 11;
             chartPredictions.Text = "chartPredictions";
+            // 
+            // trackBarBrushSize
+            // 
+            trackBarBrushSize.Location = new Point(418, 41);
+            trackBarBrushSize.Maximum = 50;
+            trackBarBrushSize.Minimum = 1;
+            trackBarBrushSize.Name = "trackBarBrushSize";
+            trackBarBrushSize.Orientation = Orientation.Vertical;
+            trackBarBrushSize.Size = new Size(45, 382);
+            trackBarBrushSize.TabIndex = 12;
+            trackBarBrushSize.Value = 25;
+            // 
+            // labelBrushSize
+            // 
+            labelBrushSize.AutoSize = true;
+            labelBrushSize.Location = new Point(414, 23);
+            labelBrushSize.Name = "labelBrushSize";
+            labelBrushSize.Size = new Size(37, 15);
+            labelBrushSize.TabIndex = 13;
+            labelBrushSize.Text = "Brush";
             // 
             // FormMain
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(906, 480);
+            ClientSize = new Size(820, 436);
+            Controls.Add(simpleDrawControl);
+            Controls.Add(labelBrushSize);
+            Controls.Add(trackBarBrushSize);
             Controls.Add(chartPredictions);
             Controls.Add(labelSanitized);
             Controls.Add(labelConfidence);
             Controls.Add(textBoxConfidence);
-            Controls.Add(label1);
             Controls.Add(buttonLoadImage);
             Controls.Add(pictureBoxAiView);
             Controls.Add(labelDetected);
             Controls.Add(textBoxDetected);
             Controls.Add(buttonLoadModel);
             Controls.Add(buttonClear);
-            Controls.Add(simpleDrawControl);
             FormBorderStyle = FormBorderStyle.FixedSingle;
             MaximizeBox = false;
             Name = "FormMain";
@@ -188,6 +198,7 @@
             Load += Form1_Load;
             ((System.ComponentModel.ISupportInitialize)pictureBoxAiView).EndInit();
             ((System.ComponentModel.ISupportInitialize)chartPredictions).EndInit();
+            ((System.ComponentModel.ISupportInitialize)trackBarBrushSize).EndInit();
             ResumeLayout(false);
             PerformLayout();
         }
@@ -201,10 +212,11 @@
         private Label labelDetected;
         private PictureBox pictureBoxAiView;
         private Button buttonLoadImage;
-        private Label label1;
         private Label labelConfidence;
         private TextBox textBoxConfidence;
         private Label labelSanitized;
         private System.Windows.Forms.DataVisualization.Charting.Chart chartPredictions;
+        private TrackBar trackBarBrushSize;
+        private Label labelBrushSize;
     }
 }

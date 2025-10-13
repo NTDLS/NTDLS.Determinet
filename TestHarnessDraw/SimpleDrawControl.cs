@@ -8,6 +8,12 @@ namespace TestHarnessDraw
         private bool isDrawing;
         private MouseButtons mouseButton;
         private Point lastPoint;
+        private FormMain? _formMain;
+
+        public void SetParent(FormMain formMain)
+        {
+            _formMain = formMain;
+        }
 
         public SimpleDrawControl()
         {
@@ -41,7 +47,7 @@ namespace TestHarnessDraw
                             color = Color.Black;
                         }
 
-                        using var thickPen = new Pen(color, 25)
+                        using var thickPen = new Pen(color, _formMain?.BrushSize ?? 10)
                         {
                             StartCap = LineCap.Round,
                             EndCap = LineCap.Round,

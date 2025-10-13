@@ -17,6 +17,8 @@ namespace TestHarnessDraw
         const int _imageWidth = 64;              // Downscale for faster processing with minimal quality loss.
         const int _imageHeight = 64;             // Downscale for faster processing with minimal quality loss.
 
+        public int BrushSize => trackBarBrushSize.Value;
+
         public FormMain()
         {
             InitializeComponent();
@@ -33,6 +35,8 @@ namespace TestHarnessDraw
             };
 
             timer.Tick += Timer_Tick;
+
+            simpleDrawControl.SetParent(this);
 
             var debugModelFile = @"C:\NTDLS\NTDLS.Determinet\TestHarness\bin\Release\net9.0\trained.dni";
             if (File.Exists(debugModelFile))
