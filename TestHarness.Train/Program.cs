@@ -77,6 +77,11 @@ namespace TestHarness.Train
             {
                 dni = DniNeuralNetwork.LoadFromFile(existing)
                     ?? throw new Exception("Failed to load the network from file.");
+
+                //var computedLoss = dni.Parameters.Get<double>("BatchLoss");
+
+                //dni.Parameters.Set("BatchLoss", 3.14159);
+
             }
             else
             {
@@ -194,6 +199,8 @@ namespace TestHarness.Train
                 epochLoss /= Math.Max(1, samplesProcessed);
 
                 Console.WriteLine($"Epoch {epoch + 1}/{_trainingEpochs} - Loss: {epochLoss:n8} - Learning Rate: {learningRate:n10}");
+
+                dni.Parameters.Set("BatchLoss", epochLoss);
 
                 //Save checkpoints.
                 dni.SaveToFile(Path.Combine(trainedModelPath, $"CharacterRecognition_{epochLoss:n8}.dni"));

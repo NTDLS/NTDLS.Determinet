@@ -6,10 +6,14 @@ namespace NTDLS.Determinet
     {
         /// <summary>
         /// Provides constants for configuring neural network parameters, such as learning rate, weight decay, and
-        /// gradient clipping.
+        /// gradient clipping, etc.
         /// </summary>
         public static class Network
         {
+            /// <summary>
+            /// Represents a named parameter for the computed loss value in a network operation.
+            /// This value is set after Backpropagate during each call to Train().
+            /// </summary>
             public static readonly DniNamedParameter ComputedLoss = new("Network_ComputedLoss", typeof(double), double.PositiveInfinity);
 
             /// <summary>
