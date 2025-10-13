@@ -5,21 +5,24 @@ namespace TestHarness.Library
 {
     public static class BackgroundLoader
     {
-        public static List<TrainingModel> LoadTrainingModels(string path)
+        public static List<TrainingModel> LoadTrainingModels(DniNeuralNetwork dni, string path)
         {
+            if (dni.OutputLabels == null || dni.OutputLabels.Length == 0)
+                throw new InvalidOperationException("DNI Neural Network must have OutputLabels defined to load training models.");
+
             var trainingModels = new List<TrainingModel>();
 
             var imagePaths = Directory.EnumerateFiles(path, "*.png", new EnumerationOptions() { RecurseSubdirectories = true });
 
-
             int charIndex = 0;
 
             var layerExpectations = new Dictionary<char, double[]>();
-            foreach (var character in Constants.NetworkOutputLabels)
+            foreach (var character in dni.OutputLabels)
             {
-                var outputs = new double[Constants.NetworkOutputLabels.Length];
+                var outputs = new double[dni.OutputLabels.Length];
                 outputs[charIndex++] = 1;
-                layerExpectations[character] = outputs;
+                // Use the first character of the label as the key to find the expected output for that character:
+                layerExpectations[character[0]] = outputs;
             }
 
             foreach (var imagePath in imagePaths)

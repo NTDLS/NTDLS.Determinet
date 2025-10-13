@@ -9,19 +9,12 @@ namespace NTDLS.Determinet
     /// <remarks>This class is used to define the structure and behavior of a specific layer in a neural
     /// network.  It includes properties for specifying the layer type, the number of nodes, the activation function, 
     /// and any additional parameters required for the layer's configuration.</remarks>
-    public class DniConfigurationLayer
+    public class DniConfigurationLayer(DniLayerType layerType, int nodes, DniActivationType activationType,
+        DniNamedFunctionParameters activationParameters)
     {
-        public int Nodes { get; set; }
-        public DniActivationType ActivationType { get; set; }
-        public DniLayerType LayerType { get; set; }
-        public DniNamedFunctionParameters Parameters { get; set; } = new();
-
-        public DniConfigurationLayer(DniLayerType layerType, int nodes, DniActivationType activationType, DniNamedFunctionParameters activationParameters)
-        {
-            Parameters = activationParameters;
-            LayerType = layerType;
-            Nodes = nodes;
-            ActivationType = activationType;
-        }
+        public int Nodes { get; set; } = nodes;
+        public DniActivationType ActivationType { get; set; } = activationType;
+        public DniLayerType LayerType { get; set; } = layerType;
+        public DniNamedFunctionParameters Parameters { get; set; } = activationParameters;
     }
 }

@@ -1,4 +1,5 @@
-﻿using System.Diagnostics.CodeAnalysis;
+﻿using NTDLS.Determinet.Types;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Text;
 
@@ -140,6 +141,69 @@ namespace NTDLS.Determinet
                     throw new Exception(message);
                 }
             }
+        }
+
+        /// <summary>
+        /// Retrieves an array of label values for the specified layer based on the provided label-value mapping.
+        /// </summary>
+        /// <param name="layer">The layer containing labels and nodes. The layer must have labels defined, and the number of labels must
+        /// match the node count.</param>
+        /// <param name="labelValues">A mapping of label names to their corresponding values. Labels not present in this mapping will be assigned
+        /// a value of 0.</param>
+        /// <returns>An array of double values representing the label values for each node in the layer. If a label is not found
+        /// in <paramref name="labelValues"/>, its corresponding value will be 0.</returns>
+        /// <exception cref="InvalidOperationException">Thrown if the layer does not have labels defined, or if the number of labels does not match the node count.</exception>
+        internal static double[] GetLayerLabelValues(DniLayer layer, DniNamedLabelValues labelValues)
+        {
+            if (layer.Labels == null || layer.Labels.Length == 0)
+                throw new InvalidOperationException("Input layer does not have labels defined.");
+
+            if (layer.Labels.Length != layer.NodeCount)
+                throw new InvalidOperationException("Input layer labels count does not match node count.");
+
+            double[] values = new double[layer.NodeCount];
+
+            for (int i = 0; i < layer.Labels.Length; i++)
+            {
+                if (labelValues.TryGetValue(layer.Labels[i], out var labelValue))
+                {
+                    values[i] = labelValue;
+                }
+                else
+                {
+                    values[i] = 0;
+                }
+            }
+
+            return values;
+        }
+
+        /// <summary>
+        /// Creates a <see cref="DniNamedLabelValues"/> instance by associating the labels of the specified layer with
+        /// the corresponding values provided.
+        /// </summary>
+        /// <param name="layer">The layer containing the labels to be used. The layer must have labels defined, and the number of labels
+        /// must match the node count.</param>
+        /// <param name="values">An array of values to associate with the layer's labels. The length of this array must match the number of
+        /// labels in the layer.</param>
+        /// <returns>A <see cref="DniNamedLabelValues"/> instance containing the layer's labels and their corresponding values.</returns>
+        /// <exception cref="InvalidOperationException">Thrown if the layer does not have labels defined, or if the number of labels does not match the node count.</exception>
+        internal static DniNamedLabelValues SetLayerLabelValues(DniLayer layer, double[] values)
+        {
+            if (layer.Labels == null || layer.Labels.Length == 0)
+                throw new InvalidOperationException("Layer does not have labels defined.");
+
+            if (layer.Labels.Length != layer.NodeCount)
+                throw new InvalidOperationException("Layer labels count does not match node count.");
+
+            var labelValues = new DniNamedLabelValues();
+
+            for (int i = 0; i < layer.Labels.Length; i++)
+            {
+                labelValues.Set(layer.Labels[i], values[i]);
+            }
+
+            return labelValues;
         }
     }
 }

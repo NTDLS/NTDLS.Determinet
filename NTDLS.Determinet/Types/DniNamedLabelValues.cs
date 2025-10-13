@@ -1,4 +1,5 @@
 ﻿using ProtoBuf;
+using System.Diagnostics.CodeAnalysis;
 
 namespace NTDLS.Determinet.Types
 {
@@ -7,13 +8,25 @@ namespace NTDLS.Determinet.Types
     /// by allowing you to supply named values instead of using neuron ordinals.
     /// </summary>
     [ProtoContract]
-    public class DniNamedInterfaceParameters
+    public class DniNamedLabelValues
     {
-        [ProtoMember(1)] public Dictionary<string, double> Lookup { get; private set; } = new(StringComparer.InvariantCultureIgnoreCase);
+        [ProtoMember(1)] public Dictionary<string, double> Lookup { get; private set; } = new();
 
+        public KeyValuePair<string, double>[] Values
+            => Lookup.ToArray();
 
         public void Set(string key, double value)
             => Lookup[key] = value;
+
+        public KeyValuePair<string, double> Max()
+        {
+            var fff = Lookup.OrderByDescending(o => o.Value).Take(1);
+
+            return Lookup.MaxBy(kv => kv.Value);
+        }
+
+        public KeyValuePair<string, double> Min()
+            => Lookup.MinBy(kv => kv.Value);
 
         /// <summary>
         /// Sets the input value if the given value is less than the existing value or if the key does not yet exist.
@@ -84,5 +97,8 @@ namespace NTDLS.Determinet.Types
             }
             return defaultValue;
         }
+
+        public bool TryGetValue(string key, [NotNullWhen(true)] out double outValue)
+            => Lookup.TryGetValue(key, out outValue);
     }
 }

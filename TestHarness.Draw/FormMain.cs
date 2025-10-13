@@ -31,7 +31,7 @@ namespace TestHarness.Draw
 
             simpleDrawControl.SetParent(this);
 
-            var debugModelFile = @"C:\NTDLS\NTDLS.Determinet\TestHarness\bin\Release\net9.0\trained.dni";
+            var debugModelFile = @"C:\NTDLS\NTDLS.Determinet\TestHarness.Train\bin\Debug\net9.0\trained.dni";
             if (File.Exists(debugModelFile))
             {
                 LoadModelFromFile(debugModelFile);
@@ -45,7 +45,7 @@ namespace TestHarness.Draw
 
             var image = ConvertBitmapToImageSharp(bitmap);
 
-            var inputBits = Library.ImageUtility.GetImageGrayscaleBytes(image, Constants.ImageWidth, Constants.ImageHeight, DniRange<int>.Zero, DniRange<int>.Zero, new DniRange<int>(4, 8),
+            var inputBits = ImageUtility.GetImageGrayscaleBytes(image, Constants.ImageWidth, Constants.ImageHeight, DniRange<int>.Zero, DniRange<int>.Zero, new DniRange<int>(4, 8),
                 (img) =>
                 {
                     var previewBmp = ToBitmap(img);
@@ -56,13 +56,14 @@ namespace TestHarness.Draw
             {
                 try
                 {
-                    var outputs = _dni.Forward(inputBits);
-                    var prediction = DniUtility.IndexOfMaxValue(outputs, out var confidence);
+                    var outputs = _dni.Forward(inputBits, out var labelValues);
 
-                    textBoxDetected.Text = $"{Constants.NetworkOutputLabels[prediction]}";
-                    textBoxConfidence.Text = $"{confidence:n4}";
+                    var prediction = labelValues.Max();
 
-                    UpdateChart(outputs, Constants.NetworkOutputLabels);
+                    textBoxDetected.Text = $"{prediction.Key}";
+                    textBoxConfidence.Text = $"{prediction.Value:n4}";
+
+                    UpdateChart(labelValues);
                 }
                 catch
                 {
@@ -96,13 +97,12 @@ namespace TestHarness.Draw
             chartArea.AxisY.Maximum = 1;
         }
 
-        private void UpdateChart(double[] outputs, char[] distinctCharacters)
+        private void UpdateChart(DniNamedLabelValues labelValues)
         {
             var series = chartPredictions.Series["Confidence"];
             series.Points.Clear();
 
-            var top = outputs
-                .Select((v, i) => new { Index = i, Value = v })
+            var top = labelValues.Values
                 .OrderByDescending(x => x.Value)
                 .Take(5)
                 .ToArray();
@@ -110,7 +110,7 @@ namespace TestHarness.Draw
             // Add each prediction as its own bar
             for (int i = 0; i < top.Length; i++)
             {
-                string label = distinctCharacters[top[i].Index].ToString();
+                string label = top[i].Key;
                 double value = top[i].Value;
 
                 var point = new DataPoint(i + 1, value)

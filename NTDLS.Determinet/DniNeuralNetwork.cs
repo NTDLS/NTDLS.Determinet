@@ -30,16 +30,17 @@ namespace NTDLS.Determinet
             Parameters.Set(Network.LearningRate, configuration.LearningRate);
 
             //Add input layer.
-            State.Layers.Add(new DniLayer(DniLayerType.Input, configuration.InputNodes, new()));
+            State.Layers.Add(new DniLayer(DniLayerType.Input, configuration.InputNodes, DniActivationType.None, new(), configuration.InputLabels));
 
             //Add hidden layer(s).
             foreach (var layerConfig in configuration.IntermediateLayers)
             {
-                State.Layers.Add(new DniLayer(DniLayerType.Intermediate, layerConfig.Nodes, layerConfig.ActivationType, layerConfig.Parameters));
+                State.Layers.Add(new DniLayer(DniLayerType.Intermediate, layerConfig.Nodes, layerConfig.ActivationType, layerConfig.Parameters, null));
             }
 
             //Add output layer.
-            State.Layers.Add(new DniLayer(DniLayerType.Output, configuration.OutputLayer.Nodes, configuration.OutputLayer.ActivationType, configuration.OutputLayer.Parameters));
+            State.Layers.Add(new DniLayer(DniLayerType.Output, configuration.OutputLayer.Nodes,
+                configuration.OutputLayer.ActivationType, configuration.OutputLayer.Parameters, configuration.OutputLabels));
 
             InitializeWeightsAndBiases();
         }
@@ -85,7 +86,6 @@ namespace NTDLS.Determinet
             }
         }
 
-
         /// <summary>
         /// Computes the output of the model for the given input values.
         /// </summary>
@@ -94,6 +94,49 @@ namespace NTDLS.Determinet
         /// on the model's configuration.</returns>
         public double[] Forward(double[] inputs)
             => Forward(inputs, false);
+
+        /// <summary>
+        /// Computes the output of the model for the given labeled input values.
+        /// </summary>
+        /// <remarks>This method processes the input values based on the model's current state and
+        /// configuration. Ensure that the provided <paramref name="labelValues"/> contains valid labels and values
+        /// corresponding to the model's input layer.</remarks>
+        /// <param name="labelValues">The labeled input values to process, represented as a <see cref="DniNamedLabelValues"/> object.</param>
+        /// <returns>An array of <see cref="double"/> values representing the computed output of the model.</returns>
+        public double[] Forward(DniNamedLabelValues labelValues)
+        {
+            var inputs = DniUtility.GetLayerLabelValues(State.Layers[0], labelValues);
+            return Forward(inputs, false);
+        }
+
+        /// <summary>
+        /// Computes the output of the model for the given input values and provides the corresponding label values.
+        /// </summary>
+        /// <param name="inputs">An array of input values to be processed by the model. The array must not be null.</param>
+        /// <param name="outputLebelValues">When this method returns, contains the label values associated with the output of the model. This parameter
+        /// is passed uninitialized.</param>
+        /// <returns>An array of output values produced by the model. The array represents the result of processing the input
+        /// values.</returns>
+        public double[] Forward(double[] inputs, out DniNamedLabelValues outputLebelValues)
+        {
+            var outputs = Forward(inputs, false);
+            outputLebelValues = DniUtility.SetLayerLabelValues(State.Layers.Last(), outputs);
+            return outputs;
+        }
+
+        /// <summary>
+        /// Processes the input label values through the network and produces the output values.
+        /// </summary>
+        /// <param name="labelValues">The input label values to be processed by the network.</param>
+        /// <param name="outputLebelValues">When this method returns, contains the output label values corresponding to the final layer of the network.</param>
+        /// <returns>An array of double values representing the output of the network after processing the input label values.</returns>
+        public double[] Forward(DniNamedLabelValues labelValues, out DniNamedLabelValues outputLebelValues)
+        {
+            var inputs = DniUtility.GetLayerLabelValues(State.Layers[0], labelValues);
+            var outputs = Forward(inputs, false);
+            outputLebelValues = DniUtility.SetLayerLabelValues(State.Layers.Last(), outputs);
+            return outputs;
+        }
 
         /// <summary>
         /// Propagates the input values forward through the network, computing activations for each layer.
@@ -367,6 +410,9 @@ namespace NTDLS.Determinet
             double loss = CrossEntropy(predictions, expected);
 
             Backpropagate(inputs, expected);
+
+            State.MostRecentLoss = loss;
+
             return loss;
         }
 
@@ -433,6 +479,46 @@ namespace NTDLS.Determinet
                 layer.InstantiateActivationFunction();
 
             return new DniNeuralNetwork { State = state };
+        }
+
+        public string[]? InputLabels
+        {
+            get
+            {
+                var layer = State.Layers.Last()
+                    ?? throw new Exception("Input layer is not defined.");
+                return layer.Labels;
+            }
+            set
+            {
+                var layer = State.Layers.Last()
+                    ?? throw new Exception("Input layer is not defined.");
+
+                if (value != null && value.Length != layer.NodeCount)
+                    throw new Exception("Input layer label count does not match node count.");
+
+                layer.Labels = value;
+            }
+        }
+
+        public string[]? OutputLabels
+        {
+            get
+            {
+                var layer = State.Layers.Last()
+                    ?? throw new Exception("Output layer is not defined.");
+                return layer.Labels;
+            }
+            set
+            {
+                var layer = State.Layers.Last()
+                    ?? throw new Exception("Output layer is not defined.");
+
+                if (value != null && value.Length != layer.NodeCount)
+                    throw new Exception("Output layer label count does not match node count.");
+
+                layer.Labels = value;
+            }
         }
     }
 }

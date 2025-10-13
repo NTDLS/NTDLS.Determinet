@@ -8,7 +8,13 @@ namespace TestHarness.Train
 {
     internal class Program
     {
-        const double _initialLearningRate = 0.0005;  // Starting learning rate for training.
+        private static readonly char[] _networkOutputLabels = [
+                '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
+                'a', 'b', 'c', 'd', 'e', 'f','g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
+                'A', 'B', 'C', 'D', 'E', 'F','G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'
+            ];
+
+        static double _initialLearningRate = 0.0005;  // Starting learning rate for training.
         const double _convergence = 0.000000001;    // Threshold for considering the training has converged.
         const int _cooldown = 5;                    // epochs to wait after each learning rate decay.
         const int _patience = 5;                    // Number of epochs to wait before reducing learning rate once cost starts increasing or reaches a plateau.
@@ -20,17 +26,26 @@ namespace TestHarness.Train
         const double _minLearningRate = 0.000001;
         const double _slop = 0.000000000001;
 
-        static void Main()
+        static void Main(string[] args)
         {
             var trainedModelFilename = "trained.dni";
+
+            // Allow setting initial learning rate from command line for experimentation:
+            if (args.Length > 0 && string.IsNullOrWhiteSpace(args[0]) == false && double.TryParse(args[0], out var lr))
+            {
+                _initialLearningRate = lr;
+            }
 
             //File.Delete(trainedModelFilename);
 
             var dni = TrainAndSave(trainedModelFilename);
 
+            dni.Forward([]);
+
             /*
             int outputNode = 0;
             double confidence = 0;
+
 
             outputNode = DniUtility.GetIndexOfMaxValue(dni.Forward(GetImageGrayscaleBytes(@"C:\NTDLS\NTDLS.Determinet\Training Characters\0 (1).png", _imageWidth, _imageHeight)), out confidence);
             Console.WriteLine($"Expected: 0: Result: {outputNode:n0}, confidence: {confidence:n4}");
@@ -102,13 +117,14 @@ namespace TestHarness.Train
 
                 var softMaxParam = new DniNamedFunctionParameters();
                 //softMaxParam.Set(SoftMax.Temperature, 5.5);
-                configuration.AddOutputLayer(Constants.NetworkOutputLabels.Length, DniActivationType.SoftMax, softMaxParam);
+                var outputLabels = _networkOutputLabels.Select(label => label.ToString()).ToArray();
+                configuration.AddOutputLayer(_networkOutputLabels.Length, DniActivationType.SoftMax, softMaxParam, outputLabels);
 
                 dni = new DniNeuralNetwork(configuration);
             }
 
             Console.WriteLine($"Loading image paths...");
-            var trainingModels = BackgroundLoader.LoadTrainingModels(@"C:\NTDLS\NTDLS.Determinet\Training Characters");
+            var trainingModels = BackgroundLoader.LoadTrainingModels(dni, @"C:\NTDLS\NTDLS.Determinet\Training Characters");
 
             var learningRate = Math.Min(dni.Parameters.Get(Network.LearningRate, _initialLearningRate), _initialLearningRate);
 
@@ -150,7 +166,7 @@ namespace TestHarness.Train
 
                 if (epoch == 0)
                 {
-                    Console.WriteLine($"Training...");
+                    Console.WriteLine($"Training with learning Rate: {learningRate:n10}");
                 }
 
                 while (backlogModels.TryPop(out var backlogModel) || threadsCompleted != threadCount)

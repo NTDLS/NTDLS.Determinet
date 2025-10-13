@@ -18,12 +18,25 @@ namespace NTDLS.Determinet
         public DniConfigurationLayer OutputLayer => _outputLayer ?? throw new Exception("Output layer is not defined.");
         public List<DniConfigurationLayer> IntermediateLayers { get; set; } = new();
 
-        public void AddInputLayer(int nodes)
+        /// <summary>
+        /// Optional labels for the input and output layer.
+        /// </summary>
+        public string[]? InputLabels { get; set; }
+
+        /// <summary>
+        /// Optional labels for the input and output layer.
+        /// </summary>
+        public string[]? OutputLabels { get; set; }
+
+        public void AddInputLayer(int nodes, string[]? labels = null)
         {
             if (InputNodes != 0)
-            {
                 throw new Exception("Input layer is already defined.");
-            }
+
+            if (labels != null && labels.Length != nodes)
+                throw new Exception("Input layer label count does not match node count.");
+
+            InputLabels = labels;
             InputNodes = nodes;
         }
 
@@ -32,13 +45,28 @@ namespace NTDLS.Determinet
             IntermediateLayers.Add(new(DniLayerType.Intermediate, nodes, activationType, activationParameters ?? new()));
         }
 
-        public void AddOutputLayer(int nodes, DniActivationType activationType, DniNamedFunctionParameters? activationParameters = null)
+        public void AddOutputLayer(int nodes, DniActivationType activationType, DniNamedFunctionParameters? activationParameters = null, string[]? labels = null)
         {
             if (_outputLayer != null)
-            {
                 throw new Exception("Output layer is already defined.");
-            }
+
+            if (labels != null && labels.Length != nodes)
+                throw new Exception("Output layer label count does not match node count.");
+
+            OutputLabels = labels;
             _outputLayer = new(DniLayerType.Output, nodes, activationType, activationParameters ?? new());
+        }
+
+        public void AddOutputLayer(int nodes, DniActivationType activationType, string[] labels)
+        {
+            if (_outputLayer != null)
+                throw new Exception("Output layer is already defined.");
+
+            if (labels != null && labels.Length != nodes)
+                throw new Exception("Output layer label count does not match node count.");
+
+            OutputLabels = labels;
+            _outputLayer = new(DniLayerType.Output, nodes, activationType, new());
         }
     }
 }
