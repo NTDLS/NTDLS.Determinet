@@ -8,6 +8,9 @@
         /// </summary>
         public static class Network
         {
+            public const string ComputedLoss = "Network_ComputedLoss";
+           
+
             /// <summary>
             /// Represents the configuration key for specifying the learning rate of the network.
             /// </summary>

@@ -43,6 +43,10 @@
             chartPredictions = new System.Windows.Forms.DataVisualization.Charting.Chart();
             trackBarBrushSize = new TrackBar();
             labelBrushSize = new Label();
+            labelLearningRate = new Label();
+            textBoxLearningRate = new TextBox();
+            labelLoss = new Label();
+            textBoxLoss = new TextBox();
             ((System.ComponentModel.ISupportInitialize)pictureBoxAiView).BeginInit();
             ((System.ComponentModel.ISupportInitialize)chartPredictions).BeginInit();
             ((System.ComponentModel.ISupportInitialize)trackBarBrushSize).BeginInit();
@@ -78,7 +82,7 @@
             // 
             // textBoxDetected
             // 
-            textBoxDetected.Location = new Point(469, 97);
+            textBoxDetected.Location = new Point(471, 200);
             textBoxDetected.Name = "textBoxDetected";
             textBoxDetected.ReadOnly = true;
             textBoxDetected.Size = new Size(92, 23);
@@ -87,7 +91,7 @@
             // labelDetected
             // 
             labelDetected.AutoSize = true;
-            labelDetected.Location = new Point(469, 79);
+            labelDetected.Location = new Point(471, 182);
             labelDetected.Name = "labelDetected";
             labelDetected.Size = new Size(54, 15);
             labelDetected.TabIndex = 4;
@@ -96,7 +100,7 @@
             // pictureBoxAiView
             // 
             pictureBoxAiView.BackgroundImageLayout = ImageLayout.None;
-            pictureBoxAiView.Location = new Point(469, 201);
+            pictureBoxAiView.Location = new Point(471, 296);
             pictureBoxAiView.Name = "pictureBoxAiView";
             pictureBoxAiView.Size = new Size(128, 128);
             pictureBoxAiView.SizeMode = PictureBoxSizeMode.StretchImage;
@@ -116,7 +120,7 @@
             // labelConfidence
             // 
             labelConfidence.AutoSize = true;
-            labelConfidence.Location = new Point(469, 131);
+            labelConfidence.Location = new Point(471, 234);
             labelConfidence.Name = "labelConfidence";
             labelConfidence.Size = new Size(68, 15);
             labelConfidence.TabIndex = 9;
@@ -124,7 +128,7 @@
             // 
             // textBoxConfidence
             // 
-            textBoxConfidence.Location = new Point(469, 149);
+            textBoxConfidence.Location = new Point(471, 252);
             textBoxConfidence.Name = "textBoxConfidence";
             textBoxConfidence.ReadOnly = true;
             textBoxConfidence.Size = new Size(102, 23);
@@ -133,7 +137,7 @@
             // labelSanitized
             // 
             labelSanitized.AutoSize = true;
-            labelSanitized.Location = new Point(469, 183);
+            labelSanitized.Location = new Point(471, 278);
             labelSanitized.Name = "labelSanitized";
             labelSanitized.Size = new Size(54, 15);
             labelSanitized.TabIndex = 10;
@@ -172,11 +176,49 @@
             labelBrushSize.TabIndex = 13;
             labelBrushSize.Text = "Brush";
             // 
+            // labelLearningRate
+            // 
+            labelLearningRate.AutoSize = true;
+            labelLearningRate.Location = new Point(463, 35);
+            labelLearningRate.Name = "labelLearningRate";
+            labelLearningRate.Size = new Size(79, 15);
+            labelLearningRate.TabIndex = 15;
+            labelLearningRate.Text = "Learning Rate";
+            // 
+            // textBoxLearningRate
+            // 
+            textBoxLearningRate.Location = new Point(463, 53);
+            textBoxLearningRate.Name = "textBoxLearningRate";
+            textBoxLearningRate.ReadOnly = true;
+            textBoxLearningRate.Size = new Size(92, 23);
+            textBoxLearningRate.TabIndex = 14;
+            // 
+            // labelLoss
+            // 
+            labelLoss.AutoSize = true;
+            labelLoss.Location = new Point(465, 79);
+            labelLoss.Name = "labelLoss";
+            labelLoss.Size = new Size(30, 15);
+            labelLoss.TabIndex = 17;
+            labelLoss.Text = "Loss";
+            // 
+            // textBoxLoss
+            // 
+            textBoxLoss.Location = new Point(463, 97);
+            textBoxLoss.Name = "textBoxLoss";
+            textBoxLoss.ReadOnly = true;
+            textBoxLoss.Size = new Size(92, 23);
+            textBoxLoss.TabIndex = 16;
+            // 
             // FormMain
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(820, 436);
+            Controls.Add(labelLoss);
+            Controls.Add(textBoxLoss);
+            Controls.Add(labelLearningRate);
+            Controls.Add(textBoxLearningRate);
             Controls.Add(simpleDrawControl);
             Controls.Add(labelBrushSize);
             Controls.Add(trackBarBrushSize);
@@ -218,5 +260,9 @@
         private System.Windows.Forms.DataVisualization.Charting.Chart chartPredictions;
         private TrackBar trackBarBrushSize;
         private Label labelBrushSize;
+        private Label labelLearningRate;
+        private TextBox textBoxLearningRate;
+        private Label labelLoss;
+        private TextBox textBoxLoss;
     }
 }

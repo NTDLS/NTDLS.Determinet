@@ -31,7 +31,7 @@ namespace TestHarness.Draw
 
             simpleDrawControl.SetParent(this);
 
-            var debugModelFile = @"C:\NTDLS\NTDLS.Determinet\TestHarness.Train\bin\Debug\net9.0\trained.dni";
+            var debugModelFile = @"C:\NTDLS\NTDLS.Determinet\TestHarness.Train\bin\Release\net9.0\trained.dni";
             if (File.Exists(debugModelFile))
             {
                 LoadModelFromFile(debugModelFile);
@@ -56,6 +56,11 @@ namespace TestHarness.Draw
             {
                 try
                 {
+                    var fff = _dni.Parameters.Get(DniParameters.Network.LearningRate, 0);
+
+                    textBoxLearningRate.Text = $"{_dni.Parameters.Get(DniParameters.Network.LearningRate, 0)}";
+                    textBoxLoss.Text = $"{_dni.Parameters.Get(DniParameters.Network.ComputedLoss, 0)}";
+
                     var outputs = _dni.Forward(inputBits, out var labelValues);
 
                     var prediction = labelValues.Max();

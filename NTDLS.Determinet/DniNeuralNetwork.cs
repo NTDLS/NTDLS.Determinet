@@ -411,7 +411,7 @@ namespace NTDLS.Determinet
 
             Backpropagate(inputs, expected);
 
-            State.MostRecentLoss = loss;
+            Parameters.Set(Network.ComputedLoss, loss);
 
             return loss;
         }

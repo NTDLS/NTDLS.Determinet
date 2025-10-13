@@ -11,10 +11,6 @@ namespace NTDLS.Determinet
     [ProtoContract]
     public class DniStateOfBeing
     {
-        /// <summary>
-        /// The most recent loss value recorded during training.
-        /// </summary>
-        [ProtoMember(1)] public double MostRecentLoss { get; internal set; } = new();
         [ProtoMember(2)] public List<DniLayer> Layers { get; internal set; } = new();
         [ProtoMember(3)] public List<DniSynapse> Synapses { get; internal set; } = new();
     }

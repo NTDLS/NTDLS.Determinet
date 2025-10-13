@@ -126,7 +126,16 @@ namespace TestHarness.Train
             Console.WriteLine($"Loading image paths...");
             var trainingModels = BackgroundLoader.LoadTrainingModels(dni, @"C:\NTDLS\NTDLS.Determinet\Training Characters");
 
+            var fff = dni.Parameters.Get(Network.LearningRate, 0.0);
+
             var learningRate = Math.Min(dni.Parameters.Get(Network.LearningRate, _initialLearningRate), _initialLearningRate);
+
+            dni.Parameters.Set(Network.LearningRate, 0.00005);
+
+            var fff1 = dni.Parameters.Get(Network.LearningRate, 0.0);
+
+            dni.SaveToFile(trainedModelFilename);
+
 
             double previousEpochLoss = double.MaxValue;
             double bestLoss = double.MaxValue;
