@@ -15,9 +15,9 @@ namespace NTDLS.Determinet.ActivationFunctions
     {
         public double Alpha { get; private set; }
 
-        public DniLeakyReLUFunction(DniNamedFunctionParameters param)
+        public DniLeakyReLUFunction(DniNamedParameterCollection param)
         {
-            Alpha = param.Get(LeakyReLU.Alpha, LeakyReLU.DefaultAlpha);
+            Alpha = param.Get<double>(LeakyReLU.Alpha);
         }
 
         public double[] Activation(double[] nodes)

@@ -36,7 +36,7 @@ namespace NTDLS.Determinet
         /// <summary>
         /// A collection of named parameters that configure the layer's behavior. These are also passed to the activation function.
         /// </summary>
-        [ProtoMember(3)] public DniNamedFunctionParameters Parameters { get; private set; }
+        [ProtoMember(3)] public DniNamedParameterCollection Parameters { get; private set; }
         /// <summary>
         /// Gets the activation type associated with the current instance.
         /// </summary>
@@ -82,7 +82,7 @@ namespace NTDLS.Determinet
         /// <param name="nodeCount">The number of nodes (or neurons) in the layer. Must be a positive integer.</param>
         /// <param name="activationType">The activation function type to be used by the layer.</param>
         /// <param name="parameters">A collection of named parameters that configure the layer's behavior. These are also passed to the activation function.</param>
-        public DniLayer(DniLayerType layerType, int nodeCount, DniActivationType activationType, DniNamedFunctionParameters parameters, string[]? labels)
+        public DniLayer(DniLayerType layerType, int nodeCount, DniActivationType activationType, DniNamedParameterCollection parameters, string[]? labels)
         {
             Labels = labels;
             Parameters = parameters;

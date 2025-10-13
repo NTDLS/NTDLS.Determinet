@@ -14,7 +14,6 @@ namespace NTDLS.Determinet
     /// activation functions and parameters. The network can be trained using backpropagation and gradient descent, and
     /// it calculates loss using the cross-entropy method with SoftMax activation for classification tasks.  This class
     /// also supports saving and loading the network's state to and from a file for persistence.</remarks>
-    [ProtoContract]
     public class DniNeuralNetwork
     {
         private static readonly ParallelOptions _parallelOptions = new()
@@ -22,12 +21,13 @@ namespace NTDLS.Determinet
             MaxDegreeOfParallelism = Environment.ProcessorCount
         };
 
-        [ProtoMember(1)] public DniNamedFunctionParameters Parameters { get; private set; } = new();
-        [ProtoMember(2)] public DniStateOfBeing State { get; private set; } = new();
+        public DniStateOfBeing State { get; private set; } = new();
+
+        public DniNamedParameterCollection Parameters => State.Parameters;
 
         public DniNeuralNetwork(DniConfiguration configuration)
         {
-            Parameters.Set(Network.LearningRate, configuration.LearningRate);
+            State.Parameters.Set(Network.LearningRate, configuration.LearningRate);
 
             //Add input layer.
             State.Layers.Add(new DniLayer(DniLayerType.Input, configuration.InputNodes, DniActivationType.None, new(), configuration.InputLabels));
@@ -162,7 +162,7 @@ namespace NTDLS.Determinet
                 layer.Activations = // Weighted sum
                      ActivateLayer(State.Layers[i - 1].Activations, State.Synapses[i - 1].Weights, State.Synapses[i - 1].Biases);
 
-                if (layer.Parameters.Get(Layer.UseBatchNorm, Layer.DefaultUseBatchNorm))
+                if (layer.Parameters.Get<bool>(Layer.UseBatchNorm))
                 {
                     BatchNormalize(layer, isTraining);
                 }
@@ -186,7 +186,7 @@ namespace NTDLS.Determinet
             if (layer.Gamma == null || layer.Beta == null)
                 return;
 
-            var momentum = layer.Parameters.Get(Layer.BatchNormMomentum, Layer.DefaultBatchNormMomentum);
+            var momentum = layer.Parameters.Get<double>(Layer.BatchNormMomentum);
 
             // --- TRAINING ---
             if (isTraining)
@@ -286,9 +286,9 @@ namespace NTDLS.Determinet
         /// <param name="actualOutput">The expected output values used to calculate the error during backpropagation.</param>
         private void Backpropagate(double[] inputs, double[] actualOutput)
         {
-            double learningRate = Parameters.Get<double>(Network.LearningRate, Network.DefaultLearningRate);
-            var weightDecay = Parameters.Get(Network.WeightDecay, Network.DefaultWeightDecay);
-            var gradientClip = Parameters.Get(Network.GradientClip, Network.DefaultGradientClip);
+            double learningRate = State.Parameters.Get<double>(Network.LearningRate);
+            var weightDecay = State.Parameters.Get<double>(Network.WeightDecay);
+            var gradientClip = State.Parameters.Get<double>(Network.GradientClip);
 
             List<double[]>? errors;
 
@@ -364,7 +364,7 @@ namespace NTDLS.Determinet
                 }
 
                 // --- Optional BatchNorm γ, β updates ---
-                if (State.Layers[i + 1].Parameters.Get(Layer.UseBatchNorm, Layer.DefaultUseBatchNorm))
+                if (State.Layers[i + 1].Parameters.Get<bool>(Layer.UseBatchNorm))
                 {
                     var bnLayer = State.Layers[i + 1];
                     if (bnLayer.Gamma != null && bnLayer.Beta != null)
@@ -411,7 +411,7 @@ namespace NTDLS.Determinet
 
             Backpropagate(inputs, expected);
 
-            Parameters.Set(Network.ComputedLoss, loss);
+            State.Parameters.Set(Network.ComputedLoss, loss);
 
             return loss;
         }

@@ -11,7 +11,7 @@ namespace NTDLS.Determinet.ActivationFunctions
     /// network layers. The derivative is used during backpropagation to compute gradients.</remarks>
     public class DniTanhFunction : IDniActivationFunction
     {
-        public DniTanhFunction(DniNamedFunctionParameters param)
+        public DniTanhFunction(DniNamedParameterCollection param)
         {
         }
 

@@ -28,7 +28,7 @@ namespace TestHarness.Train
 
         static void Main(string[] args)
         {
-            var trainedModelFilename = "trained.dni";
+            var trainedModelPath = "..\\..\\..\\..\\Trained Models";
 
             // Allow setting initial learning rate from command line for experimentation:
             if (args.Length > 0 && string.IsNullOrWhiteSpace(args[0]) == false && double.TryParse(args[0], out var lr))
@@ -36,9 +36,7 @@ namespace TestHarness.Train
                 _initialLearningRate = lr;
             }
 
-            //File.Delete(trainedModelFilename);
-
-            var dni = TrainAndSave(trainedModelFilename);
+            var dni = TrainAndSave(trainedModelPath);
 
             dni.Forward([]);
 
@@ -70,13 +68,14 @@ namespace TestHarness.Train
             */
         }
 
-        static DniNeuralNetwork TrainAndSave(string trainedModelFilename)
+        static DniNeuralNetwork TrainAndSave(string trainedModelPath)
         {
             DniNeuralNetwork dni;
 
-            if (File.Exists(trainedModelFilename))
+            var existing = Path.Combine(trainedModelPath, "CharacterRecognition_Best.dni");
+            if (File.Exists(existing))
             {
-                dni = DniNeuralNetwork.LoadFromFile(trainedModelFilename)
+                dni = DniNeuralNetwork.LoadFromFile(existing)
                     ?? throw new Exception("Failed to load the network from file.");
             }
             else
@@ -98,7 +97,7 @@ namespace TestHarness.Train
 
                 configuration.AddInputLayer(Constants.ImageWidth * Constants.ImageHeight);
 
-                var leakyReLUParam = new DniNamedFunctionParameters();
+                var leakyReLUParam = new DniNamedParameterCollection();
                 //leakyReLUParam.Set(Layer.UseBatchNorm, true);
                 //leakyReLUParam.Set(Layer.BatchNormMomentum, 0.9);
 
@@ -115,7 +114,7 @@ namespace TestHarness.Train
                 configuration.AddIntermediateLayer(280, DniActivationType.PiecewiseLinear, piecewiseLinearParam);
                 */
 
-                var softMaxParam = new DniNamedFunctionParameters();
+                var softMaxParam = new DniNamedParameterCollection();
                 //softMaxParam.Set(SoftMax.Temperature, 5.5);
                 var outputLabels = _networkOutputLabels.Select(label => label.ToString()).ToArray();
                 configuration.AddOutputLayer(_networkOutputLabels.Length, DniActivationType.SoftMax, softMaxParam, outputLabels);
@@ -126,16 +125,7 @@ namespace TestHarness.Train
             Console.WriteLine($"Loading image paths...");
             var trainingModels = BackgroundLoader.LoadTrainingModels(dni, @"C:\NTDLS\NTDLS.Determinet\Training Characters");
 
-            var fff = dni.Parameters.Get(Network.LearningRate, 0.0);
-
             var learningRate = Math.Min(dni.Parameters.Get(Network.LearningRate, _initialLearningRate), _initialLearningRate);
-
-            dni.Parameters.Set(Network.LearningRate, 0.00005);
-
-            var fff1 = dni.Parameters.Get(Network.LearningRate, 0.0);
-
-            dni.SaveToFile(trainedModelFilename);
-
 
             double previousEpochLoss = double.MaxValue;
             double bestLoss = double.MaxValue;
@@ -205,10 +195,13 @@ namespace TestHarness.Train
 
                 Console.WriteLine($"Epoch {epoch + 1}/{_trainingEpochs} - Loss: {epochLoss:n8} - Learning Rate: {learningRate:n10}");
 
+                //Save checkpoints.
+                dni.SaveToFile(Path.Combine(trainedModelPath, $"CharacterRecognition_{epochLoss:n8}.dni"));
+
                 if (epochLoss < bestLoss - _minDelta)
                 {
                     //We save every time we get a new best loss.
-                    dni.SaveToFile(trainedModelFilename);
+                    dni.SaveToFile(Path.Combine(trainedModelPath, "CharacterRecognition_Best.dni"));
 
                     bestLoss = epochLoss;
                     epochsSinceImprovement = 0;

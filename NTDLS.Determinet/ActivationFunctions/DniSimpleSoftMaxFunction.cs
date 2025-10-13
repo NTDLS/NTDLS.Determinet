@@ -13,7 +13,7 @@ namespace NTDLS.Determinet.ActivationFunctions
     /// values are large or small to avoid overflow or underflow.</remarks>
     public class DniSimpleSoftMaxFunction : IDniActivationFunction
     {
-        public DniSimpleSoftMaxFunction(DniNamedFunctionParameters param)
+        public DniSimpleSoftMaxFunction(DniNamedParameterCollection param)
         {
         }
 

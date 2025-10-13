@@ -11,7 +11,7 @@ namespace NTDLS.Determinet.ActivationFunctions
     /// which is often used during backpropagation in training neural networks.</remarks>
     public class DniSigmoidFunction : IDniActivationFunction
     {
-        public DniSigmoidFunction(DniNamedFunctionParameters param)
+        public DniSigmoidFunction(DniNamedParameterCollection param)
         {
         }
 

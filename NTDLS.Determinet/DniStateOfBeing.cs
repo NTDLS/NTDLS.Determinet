@@ -1,4 +1,5 @@
-﻿using ProtoBuf;
+﻿using NTDLS.Determinet.Types;
+using ProtoBuf;
 
 namespace NTDLS.Determinet
 {
@@ -11,6 +12,7 @@ namespace NTDLS.Determinet
     [ProtoContract]
     public class DniStateOfBeing
     {
+        [ProtoMember(1)] public DniNamedParameterCollection Parameters { get; private set; } = new();
         [ProtoMember(2)] public List<DniLayer> Layers { get; internal set; } = new();
         [ProtoMember(3)] public List<DniSynapse> Synapses { get; internal set; } = new();
     }

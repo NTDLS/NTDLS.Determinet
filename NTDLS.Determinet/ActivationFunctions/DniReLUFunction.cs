@@ -11,7 +11,7 @@ namespace NTDLS.Determinet.ActivationFunctions
     /// non-linearity.</remarks>
     public class DniReLUFunction : IDniActivationFunction
     {
-        public DniReLUFunction(DniNamedFunctionParameters param)
+        public DniReLUFunction(DniNamedParameterCollection param)
         {
         }
 

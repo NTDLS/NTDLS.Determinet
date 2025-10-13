@@ -3,6 +3,7 @@ using NTDLS.Determinet.Types;
 using System.Drawing.Imaging;
 using System.Windows.Forms.DataVisualization.Charting;
 using TestHarness.Library;
+using static NTDLS.Determinet.DniParameters;
 
 namespace TestHarness.Draw
 {
@@ -31,11 +32,11 @@ namespace TestHarness.Draw
 
             simpleDrawControl.SetParent(this);
 
-            var debugModelFile = @"C:\NTDLS\NTDLS.Determinet\TestHarness.Train\bin\Release\net9.0\trained.dni";
+            var debugModelFile = @"..\..\..\..\Trained Models\CharacterRecognition_Best.dni";
             if (File.Exists(debugModelFile))
             {
                 LoadModelFromFile(debugModelFile);
-                simpleDrawControl.LoadImageFromFile("C:\\NTDLS\\NTDLS.Determinet\\Training Characters\\K 004 Heebo Thin.png");
+                //simpleDrawControl.LoadImageFromFile("C:\\NTDLS\\NTDLS.Determinet\\Training Characters\\K 004 Heebo Thin.png");
             }
         }
 
@@ -56,10 +57,8 @@ namespace TestHarness.Draw
             {
                 try
                 {
-                    var fff = _dni.Parameters.Get(DniParameters.Network.LearningRate, 0);
-
-                    textBoxLearningRate.Text = $"{_dni.Parameters.Get(DniParameters.Network.LearningRate, 0)}";
-                    textBoxLoss.Text = $"{_dni.Parameters.Get(DniParameters.Network.ComputedLoss, 0)}";
+                    textBoxLearningRate.Text = $"{_dni.Parameters.Get<double>(Network.LearningRate):n10}";
+                    textBoxLoss.Text = $"{_dni.Parameters.Get<double>(Network.ComputedLoss):n10}";
 
                     var outputs = _dni.Forward(inputBits, out var labelValues);
 
@@ -187,12 +186,6 @@ namespace TestHarness.Draw
         {
             _dni = DniNeuralNetwork.LoadFromFile(fileName)
                 ?? throw new Exception("Failed to load the network from file.");
-
-            // Remove "UseBatchNorm" parameter from all layers if it exists
-            foreach (var layer in _dni.State.Layers)
-            {
-                layer.Parameters.Remove("UseBatchNorm");
-            }
         }
 
         private void ButtonLoadImage_Click(object sender, EventArgs e)

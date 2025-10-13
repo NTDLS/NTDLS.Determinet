@@ -10,11 +10,11 @@ namespace NTDLS.Determinet
     /// network.  It includes properties for specifying the layer type, the number of nodes, the activation function, 
     /// and any additional parameters required for the layer's configuration.</remarks>
     public class DniConfigurationLayer(DniLayerType layerType, int nodes, DniActivationType activationType,
-        DniNamedFunctionParameters activationParameters)
+        DniNamedParameterCollection activationParameters)
     {
         public int Nodes { get; set; } = nodes;
         public DniActivationType ActivationType { get; set; } = activationType;
         public DniLayerType LayerType { get; set; } = layerType;
-        public DniNamedFunctionParameters Parameters { get; set; } = activationParameters;
+        public DniNamedParameterCollection Parameters { get; set; } = activationParameters;
     }
 }

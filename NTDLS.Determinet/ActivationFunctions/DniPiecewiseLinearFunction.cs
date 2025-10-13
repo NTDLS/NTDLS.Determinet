@@ -1,5 +1,6 @@
 ﻿using NTDLS.Determinet.ActivationFunctions.Interfaces;
 using NTDLS.Determinet.Types;
+using static NTDLS.Determinet.DniParameters;
 
 namespace NTDLS.Determinet.ActivationFunctions
 {
@@ -17,10 +18,10 @@ namespace NTDLS.Determinet.ActivationFunctions
         public double Alpha { get; private set; } //Linear slope value.
         public DniRange Range { get; private set; } //Function output range.
 
-        public DniPiecewiseLinearFunction(DniNamedFunctionParameters param)
+        public DniPiecewiseLinearFunction(DniNamedParameterCollection param)
         {
-            Alpha = param.Get<double>("alpha", 0.1);
-            Range = param.Get<DniRange>("range", new DniRange(-1, +1));
+            Alpha = param.Get<double>(Piecewise.Alpha);
+            Range = param.Get<DniRange>(Piecewise.Range);
         }
 
         public double[] Activation(double[] nodes)

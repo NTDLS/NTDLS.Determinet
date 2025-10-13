@@ -82,7 +82,7 @@
             // 
             // textBoxDetected
             // 
-            textBoxDetected.Location = new Point(471, 200);
+            textBoxDetected.Location = new Point(465, 200);
             textBoxDetected.Name = "textBoxDetected";
             textBoxDetected.ReadOnly = true;
             textBoxDetected.Size = new Size(92, 23);
@@ -91,7 +91,7 @@
             // labelDetected
             // 
             labelDetected.AutoSize = true;
-            labelDetected.Location = new Point(471, 182);
+            labelDetected.Location = new Point(465, 182);
             labelDetected.Name = "labelDetected";
             labelDetected.Size = new Size(54, 15);
             labelDetected.TabIndex = 4;
@@ -100,7 +100,7 @@
             // pictureBoxAiView
             // 
             pictureBoxAiView.BackgroundImageLayout = ImageLayout.None;
-            pictureBoxAiView.Location = new Point(471, 296);
+            pictureBoxAiView.Location = new Point(465, 296);
             pictureBoxAiView.Name = "pictureBoxAiView";
             pictureBoxAiView.Size = new Size(128, 128);
             pictureBoxAiView.SizeMode = PictureBoxSizeMode.StretchImage;
@@ -120,7 +120,7 @@
             // labelConfidence
             // 
             labelConfidence.AutoSize = true;
-            labelConfidence.Location = new Point(471, 234);
+            labelConfidence.Location = new Point(465, 234);
             labelConfidence.Name = "labelConfidence";
             labelConfidence.Size = new Size(68, 15);
             labelConfidence.TabIndex = 9;
@@ -128,7 +128,7 @@
             // 
             // textBoxConfidence
             // 
-            textBoxConfidence.Location = new Point(471, 252);
+            textBoxConfidence.Location = new Point(465, 252);
             textBoxConfidence.Name = "textBoxConfidence";
             textBoxConfidence.ReadOnly = true;
             textBoxConfidence.Size = new Size(102, 23);
@@ -137,7 +137,7 @@
             // labelSanitized
             // 
             labelSanitized.AutoSize = true;
-            labelSanitized.Location = new Point(471, 278);
+            labelSanitized.Location = new Point(465, 278);
             labelSanitized.Name = "labelSanitized";
             labelSanitized.Size = new Size(54, 15);
             labelSanitized.TabIndex = 10;
@@ -179,7 +179,7 @@
             // labelLearningRate
             // 
             labelLearningRate.AutoSize = true;
-            labelLearningRate.Location = new Point(463, 35);
+            labelLearningRate.Location = new Point(465, 41);
             labelLearningRate.Name = "labelLearningRate";
             labelLearningRate.Size = new Size(79, 15);
             labelLearningRate.TabIndex = 15;
@@ -187,7 +187,7 @@
             // 
             // textBoxLearningRate
             // 
-            textBoxLearningRate.Location = new Point(463, 53);
+            textBoxLearningRate.Location = new Point(465, 59);
             textBoxLearningRate.Name = "textBoxLearningRate";
             textBoxLearningRate.ReadOnly = true;
             textBoxLearningRate.Size = new Size(92, 23);
@@ -196,7 +196,7 @@
             // labelLoss
             // 
             labelLoss.AutoSize = true;
-            labelLoss.Location = new Point(465, 79);
+            labelLoss.Location = new Point(465, 85);
             labelLoss.Name = "labelLoss";
             labelLoss.Size = new Size(30, 15);
             labelLoss.TabIndex = 17;
@@ -204,7 +204,7 @@
             // 
             // textBoxLoss
             // 
-            textBoxLoss.Location = new Point(463, 97);
+            textBoxLoss.Location = new Point(465, 103);
             textBoxLoss.Name = "textBoxLoss";
             textBoxLoss.ReadOnly = true;
             textBoxLoss.Size = new Size(92, 23);

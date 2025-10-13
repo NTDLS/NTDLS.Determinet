@@ -1,5 +1,6 @@
 ﻿using NTDLS.Determinet.ActivationFunctions.Interfaces;
 using NTDLS.Determinet.Types;
+using static NTDLS.Determinet.DniParameters;
 
 namespace NTDLS.Determinet.ActivationFunctions
 {
@@ -13,13 +14,12 @@ namespace NTDLS.Determinet.ActivationFunctions
     public class DniLinearFunction : IDniActivationFunction
     {
         public double Alpha { get; private set; } //Linear slope value.
-
         public DniRange Range { get; private set; } //Function output range.
 
-        public DniLinearFunction(DniNamedFunctionParameters param)
+        public DniLinearFunction(DniNamedParameterCollection param)
         {
-            Alpha = param.Get<double>("Alpha", 1);
-            Range = param.Get("Range", new DniRange(-1, +1));
+            Alpha = param.Get<double>(Linear.Alpha);
+            Range = param.Get<DniRange>(Linear.Range);
         }
 
         public double[] Activation(double[] nodes)
