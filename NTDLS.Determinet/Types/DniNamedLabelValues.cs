@@ -101,15 +101,14 @@ namespace NTDLS.Determinet.Types
         /// <returns>An array of <see cref="double"/> values representing the values in the collection. The order of the values
         /// in the array corresponds to the order of the keys in the collection.</returns>
         public double[] ToArray()
-        {
-            var values = new double[Lookup.Count];
-            var keys = Lookup.Keys.ToList();
-            for (int i = 0; i < keys.Count; i++)
-            {
-                values[i] = Lookup[keys[i]];
-            }
-            return values;
-        }
+            => Values.Select(kv => kv.Value).ToArray();
+
+        /// <summary>
+        /// Retrieves all keys from the collection.
+        /// </summary>
+        /// <returns>An array of strings containing the keys. The array will be empty if the collection contains no elements.</returns>
+        public string[] Keys()
+            => Values.Select(kv => kv.Key).ToArray();
 
         /// <summary>
         /// Retrieves the value associated with the specified key.
