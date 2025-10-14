@@ -75,10 +75,13 @@ namespace TestHarness.Validate
             Console.WriteLine($"Incorrect:     {incorrect}");
             Console.WriteLine($"Accuracy:      {(correct / samplesProcessed * 100.0):F2}%");
             Console.WriteLine($"Accuracy (All):          {(correct / samplesProcessed * 100.0):F2}%");
+            //This tells us how accurate the model is when it is confident in its prediction, this is the number we care about
+            //  because it means that when the model is confident, it is usually correct - and it "knows when it doesn't know".
             Console.WriteLine($"Accuracy (Confident):    {(confidentSamples > 0 ? correct / confidentSamples * 100.0 : 0):F2}%");
             Console.WriteLine($"No-Confidence Samples:   {noConfidence} ({noConfidence / samplesProcessed * 100.0:F2}%)");
 
             // Detailed per-character accuracy:
+            Console.WriteLine("\n=== Per-Character Accuracy ===");
             foreach (var kv in confusion.OrderBy(k => k.Key))
             {
                 double acc = kv.Value.total > 0 ? (double)kv.Value.correct / kv.Value.total * 100.0 : 0;
