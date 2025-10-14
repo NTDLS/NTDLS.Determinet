@@ -8,6 +8,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="NTDLS.DelegateThreadPooling" Version="2.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\NTDLS.Determinet\NTDLS.Determinet.csproj" />
     <ProjectReference Include="..\TestHarness.Library\TestHarness.Library.csproj" />
   </ItemGroup>

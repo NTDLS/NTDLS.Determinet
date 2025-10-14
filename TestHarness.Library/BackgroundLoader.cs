@@ -64,6 +64,7 @@ namespace TestHarness.Library
 
         public void BeginPopulation(int epoch)
         {
+            _threadsCompleted = 0;
             for (int i = 0; i < _threadCount; i++)
             {
                 Task.Run(() =>

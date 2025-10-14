@@ -1,7 +1,4 @@
 ﻿using NTDLS.Determinet.Types;
-using System.Diagnostics.CodeAnalysis;
-using System.Runtime.CompilerServices;
-using System.Text;
 
 namespace NTDLS.Determinet
 {
@@ -27,8 +24,10 @@ namespace NTDLS.Determinet
             {
                 if (_random == null)
                 {
-                    var seed = Guid.NewGuid().GetHashCode();
-                    _random = new Random(seed);
+                    lock (typeof(DniUtility))
+                    {
+                        _random ??= new Random(Guid.NewGuid().GetHashCode());
+                    }
                 }
                 return _random;
             }
@@ -43,7 +42,7 @@ namespace NTDLS.Determinet
             return mean + stdDev * randStdNormal; // Scale and shift to desired mean and standard deviation
         }
 
-        public static int IndexOfMaxValue(double[] values, out double confidence)
+        public static int IndexOfMaxValue(this double[] values, out double confidence)
         {
             int maxIndex = 0;
             double maxValue = values[0];
@@ -62,91 +61,23 @@ namespace NTDLS.Determinet
             return maxIndex;
         }
 
-        public static int Checksum(string buffer)
-        {
-            return Checksum(Encoding.ASCII.GetBytes(buffer));
-        }
-
-        public static int Checksum(byte[] buffer)
-        {
-            int sum = 0;
-            foreach (var b in buffer)
-            {
-                sum += (int)(sum ^ b);
-            }
-            return sum;
-        }
+        /// <summary>
+        /// Determines whether a random event occurs based on the specified probability.
+        /// </summary>
+        /// <param name="probability">A value between 0.0 and 1.0 representing the probability of the event occurring.  Must be greater than or
+        /// equal to 0.0 and less than or equal to 1.0.</param>
+        /// <returns><see langword="true"/> if the random event occurs based on the specified probability;  otherwise, <see
+        /// langword="false"/>.</returns>
+        public static bool ChanceIn(double probability)
+            => Random.NextDouble() < probability;
 
         /// <summary>
-        /// Flips a coin with a probability between 0.0 - 1.0.
+        /// Simulates a coin flip and returns the result.
         /// </summary>
-        /// <param name="probability"></param>
-        /// <returns></returns>
-        public static bool FlipCoin(double probability)
-        {
-            return (Random.Next(0, 1000) / 1000 >= probability);
-        }
-
+        /// <returns><see langword="true"/> if the result of the coin flip is heads; otherwise, <see langword="false"/> for
+        /// tails.</returns>
         public static bool FlipCoin()
-        {
-            return Random.Next(0, 100) >= 50;
-        }
-
-        public static double GetRandomNeuronValue()
-        {
-            if (FlipCoin())
-            {
-                return (double)(Random.NextDouble() / 0.5);
-            }
-            return (double)((Random.NextDouble() / 0.5f) * -1);
-        }
-
-        public static double GetRandomBiasValue()
-        {
-            if (FlipCoin())
-            {
-                return (double)(Random.NextDouble() / 0.5);
-            }
-            return (double)((Random.NextDouble() / 0.5f) * -1);
-        }
-
-        public static double GetRandomWeightValue()
-        {
-            if (FlipCoin())
-            {
-                return (double)(Random.NextDouble() / 0.5);
-            }
-            return (double)((Random.NextDouble() / 0.5f) * -1);
-        }
-
-        public static double NextDouble(double minimum, double maximum)
-        {
-            if (minimum < 0)
-            {
-                minimum = Math.Abs(minimum);
-                if (FlipCoin())
-                {
-                    return (Random.NextDouble() * (maximum - minimum) + minimum) * -1;
-                }
-            }
-            return Random.NextDouble() * (maximum - minimum) + minimum;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void EnsureNotNull<T>([NotNull] T? value, string? message = null, [CallerArgumentExpression(nameof(value))] string strName = "")
-        {
-            if (value == null)
-            {
-                if (message == null)
-                {
-                    throw new Exception($"Value should not be null: '{strName}'.");
-                }
-                else
-                {
-                    throw new Exception(message);
-                }
-            }
-        }
+            => Random.NextDouble() < 0.5;
 
         /// <summary>
         /// Retrieves an array of label values for the specified layer based on the provided label-value mapping.
@@ -158,7 +89,7 @@ namespace NTDLS.Determinet
         /// <returns>An array of double values representing the label values for each node in the layer. If a label is not found
         /// in <paramref name="labelValues"/>, its corresponding value will be 0.</returns>
         /// <exception cref="InvalidOperationException">Thrown if the layer does not have labels defined, or if the number of labels does not match the node count.</exception>
-        internal static double[] GetLayerLabelValues(DniLayer layer, DniNamedLabelValues labelValues)
+        internal static double[] GetLabelValues(this DniLayer layer, DniNamedLabelValues labelValues)
         {
             if (layer.Labels == null || layer.Labels.Length == 0)
                 throw new InvalidOperationException("Input layer does not have labels defined.");
@@ -166,7 +97,7 @@ namespace NTDLS.Determinet
             if (layer.Labels.Length != layer.NodeCount)
                 throw new InvalidOperationException("Input layer labels count does not match node count.");
 
-            double[] values = new double[layer.NodeCount];
+            var values = new double[layer.NodeCount];
 
             for (int i = 0; i < layer.Labels.Length; i++)
             {
@@ -193,7 +124,7 @@ namespace NTDLS.Determinet
         /// labels in the layer.</param>
         /// <returns>A <see cref="DniNamedLabelValues"/> instance containing the layer's labels and their corresponding values.</returns>
         /// <exception cref="InvalidOperationException">Thrown if the layer does not have labels defined, or if the number of labels does not match the node count.</exception>
-        internal static DniNamedLabelValues SetLayerLabelValues(DniLayer layer, double[] values)
+        internal static DniNamedLabelValues SetLabelValues(this DniLayer layer, double[] values)
         {
             if (layer.Labels == null || layer.Labels.Length == 0)
                 throw new InvalidOperationException("Layer does not have labels defined.");

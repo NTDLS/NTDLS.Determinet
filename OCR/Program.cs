@@ -130,7 +130,6 @@ namespace OCR
                     using var charImg = lineImg.Clone(ctx => ctx.Crop(rect));
                     //charImg.Save($"C:\\NTDLS\\NTDLS.Determinet\\OCR\\debug_out\\line{lineIndex:00}_char{charIndex:000}.png");
 
-
                     var inputBits = GetImageGrayscaleBytes(charImg, _imageWidth, _imageHeight);
 
                     if (inputBits != null)
@@ -138,7 +137,7 @@ namespace OCR
                         try
                         {
                             var outputs = dni.Forward(inputBits);
-                            var prediction = DniUtility.IndexOfMaxValue(outputs, out var confidence);
+                            var prediction = outputs.IndexOfMaxValue(out var confidence);
                             Console.Write($"{distinctCharacters[prediction]}");
                         }
                         catch

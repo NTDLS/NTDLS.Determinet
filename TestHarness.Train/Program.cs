@@ -154,7 +154,7 @@ namespace TestHarness.Train
                     //Console.WriteLine($"{loss:n10}");
                     samplesProcessed++;
 
-                    Console.Write($"{samplesProcessed:n0} of {backgroundLoader.Count:n0} ({((samplesProcessed / backgroundLoader.Count) * 100.0):n2}%)\r");
+                    Console.Write($"{samplesProcessed:n0} of {backgroundLoader.Count:n0} ({((samplesProcessed / backgroundLoader.Count) * 100.0):n1}%)\r");
                 }
 
                 /*
@@ -172,7 +172,8 @@ namespace TestHarness.Train
                 dni.Parameters.Set("BatchLoss", epochLoss);
 
                 //Save checkpoints.
-                dni.SaveToFile(Path.Combine(trainedModelPath, $"CharacterRecognition_{epochLoss:n8}.dni"));
+                var timestamp = DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss");
+                dni.SaveToFile(Path.Combine(trainedModelPath, $"CharacterRecognition_{timestamp}_{epochLoss:n8}.dni"));
 
                 if (epochLoss < bestLoss - _minDelta)
                 {

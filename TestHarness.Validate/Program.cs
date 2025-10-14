@@ -5,12 +5,18 @@ namespace TestHarness.Validate
 {
     internal class Program
     {
-        static void Main()
+        static void Main(string[] args)
         {
             var sampleImagePath = "..\\..\\..\\..\\Training Characters";
             var trainedModelPath = "..\\..\\..\\..\\Trained Models";
 
-            var existing = Path.Combine(trainedModelPath, "CharacterRecognition_Best.dni");
+            string file = "CharacterRecognition_Best.dni";
+            if(args.Length > 0)
+            {
+                file = args[0];
+            }
+
+            var existing = Path.Combine(trainedModelPath, file);
             if (!File.Exists(existing))
             {
                 Console.WriteLine($"The trained model file does not exist: {existing}");
@@ -64,7 +70,7 @@ namespace TestHarness.Validate
 
                 samplesProcessed++;
 
-                Console.Write($"{samplesProcessed:n0} of {backgroundLoader.Count:n0} ({((samplesProcessed / backgroundLoader.Count) * 100.0):n2}%)\r");
+                Console.Write($"{samplesProcessed:n0} of {backgroundLoader.Count:n0} ({((samplesProcessed / backgroundLoader.Count) * 100.0):n1}%)\r");
             }
 
             double confidentSamples = correct + incorrect;
@@ -87,6 +93,9 @@ namespace TestHarness.Validate
                 double acc = kv.Value.total > 0 ? (double)kv.Value.correct / kv.Value.total * 100.0 : 0;
                 Console.WriteLine($"{kv.Key}: {acc:F1}% ({kv.Value.correct}/{kv.Value.total})");
             }
+
+            Console.WriteLine("Press Enter to exit.");
+            Console.ReadLine();
         }
     }
 }

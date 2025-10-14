@@ -21,7 +21,6 @@ namespace NTDLS.Determinet
         /// </summary>
         internal DniStateOfBeing State { get; private set; } = new();
 
-
         #region State Passthroughs.
 
         /// <summary>
@@ -134,7 +133,7 @@ namespace NTDLS.Determinet
         /// <returns>An array of <see cref="double"/> values representing the computed output of the model.</returns>
         public double[] Forward(DniNamedLabelValues labelValues)
         {
-            var inputs = DniUtility.GetLayerLabelValues(State.Layers[0], labelValues);
+            var inputs = State.Layers[0].GetLabelValues(labelValues);
             return Forward(inputs, false);
         }
 
@@ -149,7 +148,7 @@ namespace NTDLS.Determinet
         public double[] Forward(double[] inputs, out DniNamedLabelValues outputLabelValues)
         {
             var outputs = Forward(inputs, false);
-            outputLabelValues = DniUtility.SetLayerLabelValues(State.Layers.Last(), outputs);
+            outputLabelValues = State.Layers.Last().SetLabelValues(outputs);
             return outputs;
         }
 
@@ -161,9 +160,9 @@ namespace NTDLS.Determinet
         /// <returns>An array of double values representing the output of the network after processing the input label values.</returns>
         public double[] Forward(DniNamedLabelValues labelValues, out DniNamedLabelValues outputLabelValues)
         {
-            var inputs = DniUtility.GetLayerLabelValues(State.Layers[0], labelValues);
+            var inputs = State.Layers[0].GetLabelValues(labelValues);
             var outputs = Forward(inputs, false);
-            outputLabelValues = DniUtility.SetLayerLabelValues(State.Layers.Last(), outputs);
+            outputLabelValues = State.Layers.Last().SetLabelValues(outputs);
             return outputs;
         }
 
