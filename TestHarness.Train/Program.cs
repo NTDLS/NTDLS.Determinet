@@ -31,7 +31,6 @@ namespace TestHarness.Train
         {
             var trainedModelPath = "..\\..\\..\\..\\Trained Models";
 
-
             DniNeuralNetwork dni;
 
             var existing = Path.Combine(trainedModelPath, "CharacterRecognition_Best.dni");
@@ -125,7 +124,7 @@ namespace TestHarness.Train
         {
             Console.WriteLine($"Loading image paths...");
             var backgroundLoader = new BackgroundLoader(dni, sampleImagePath,
-                Constants.ImageWidth, Constants.ImageHeight, new DniRange<int>(-5, 5), new DniRange<int>(-3, 3), new DniRange<int>(1, 4), new DniRange<double>(0.5, 1));
+                Constants.ImageWidth, Constants.ImageHeight, new DniRange<int>(-5, 5), new DniRange<int>(-3, 3), new DniRange<int>(1, 4), DniRange<double>.One);
 
             var learningRate = dni.Parameters.Get(Network.LearningRate, _initialLearningRate);
 
