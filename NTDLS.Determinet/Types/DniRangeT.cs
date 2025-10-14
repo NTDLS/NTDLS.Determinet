@@ -22,6 +22,15 @@ namespace NTDLS.Determinet.Types
         public static readonly DniRange<T> Zero = new(T.Zero, T.Zero);
 
         /// <summary>
+        /// Represents a predefined <see cref="DniRange{T}"/> where both the start and end values are set to <see
+        /// cref="T.One"/>.
+        /// </summary>
+        /// <remarks>This static member provides a convenient way to access a range where the start and
+        /// end values are identical and equal to <see cref="T.One"/>. It is commonly used in scenarios where a
+        /// single-value range is required.</remarks>
+        public static readonly DniRange<T> One = new(T.One, T.One);
+
+        /// <summary>
         /// Gets or sets the minimum value in the collection.
         /// </summary>
         public T Min { get; set; }

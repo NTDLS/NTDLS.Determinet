@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "TestHarness.Train": {
+      "commandName": "Project",
+      "commandLineArgs": "0.0065"
+    }
+  }
+}

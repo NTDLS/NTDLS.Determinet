@@ -19,10 +19,19 @@ namespace NTDLS.Determinet.Types
         /// <remarks>This static member provides a predefined range with zero values for both boundaries. 
         /// It can be used as a default or placeholder range in scenarios where no specific range is required.</remarks>
         public static readonly DniRange Zero = new(0, 0);
+
+        /// <summary>
+        /// Represents a predefined DNI range with both the start and end values set to 0.
+        /// </summary>
+        /// <remarks>This static field provides a constant instance of a <see cref="DniRange"/> where the
+        /// range is effectively empty,  as both the start and end values are the same.</remarks>
+        public static readonly DniRange One = new(1, 1);
+
         /// <summary>
         /// Gets or sets the minimum value.
         /// </summary>
         [ProtoMember(1)] public double Min { get; set; }
+
         /// <summary>
         /// Gets or sets the maximum allowable value.
         /// </summary>

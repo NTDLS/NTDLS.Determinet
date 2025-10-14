@@ -15,7 +15,7 @@ namespace GenImages
 
             string chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 
-            string outRoot = @"C:\NTDLS\NTDLS.Determinet\Training Characters";
+            string outRoot = @"C:\NTDLS\NTDLS.Determinet\Sample Images\Training";
             int size = 130;
 
             var fc = new FontCollection();

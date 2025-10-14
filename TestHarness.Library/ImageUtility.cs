@@ -10,27 +10,28 @@ namespace TestHarness.Library
     {
         public delegate void PreviewImageHandler(Image<Rgba32> img);
 
-        public static double[]? GetImageGrayscaleBytes(string imagePath, int resizeWidth, int resizeHeight,
-            DniRange<int>? angleVariance, DniRange<int>? shiftVariance, DniRange<int>? blurVariance, PreviewImageHandler? previewImageHandler = null)
+        public static double[]? GetImageGrayscaleBytes(string imagePath, int resizeWidth, int resizeHeight, DniRange<int>? angleVariance,
+            DniRange<int>? shiftVariance, DniRange<int>? blurVariance, DniRange<double>? scaleVariance, PreviewImageHandler? previewImageHandler = null)
         {
             var imageBytes = File.ReadAllBytes(imagePath);
-            return GetImageGrayscaleBytes(imageBytes, resizeWidth, resizeHeight, angleVariance, shiftVariance, blurVariance, previewImageHandler);
+            return GetImageGrayscaleBytes(imageBytes, resizeWidth, resizeHeight, angleVariance, shiftVariance, blurVariance, scaleVariance, previewImageHandler);
         }
 
-        public static double[]? GetImageGrayscaleBytes(byte[] imageBytes, int resizeWidth, int resizeHeight,
-            DniRange<int>? angleVariance, DniRange<int>? shiftVariance, DniRange<int>? blurVariance, PreviewImageHandler? previewImageHandler = null)
+        public static double[]? GetImageGrayscaleBytes(byte[] imageBytes, int resizeWidth, int resizeHeight, DniRange<int>? angleVariance,
+            DniRange<int>? shiftVariance, DniRange<int>? blurVariance, DniRange<double>? scaleVariance, PreviewImageHandler? previewImageHandler = null)
         {
             // Load the image in RGB format and convert to RGBA.
             using var img = Image.Load<Rgba32>(new MemoryStream(imageBytes));
-            return GetImageGrayscaleBytes(img, resizeWidth, resizeHeight, angleVariance, shiftVariance, blurVariance, previewImageHandler);
+            return GetImageGrayscaleBytes(img, resizeWidth, resizeHeight, angleVariance, shiftVariance, blurVariance, scaleVariance, previewImageHandler);
         }
 
-        public static double[]? GetImageGrayscaleBytes(Image<Rgba32> img, int resizeWidth, int resizeHeight,
-            DniRange<int>? angleVariance, DniRange<int>? shiftVariance, DniRange<int>? blurVariance, PreviewImageHandler? previewImageHandler = null)
+        public static double[]? GetImageGrayscaleBytes(Image<Rgba32> img, int resizeWidth, int resizeHeight, DniRange<int>? angleVariance,
+            DniRange<int>? shiftVariance, DniRange<int>? blurVariance, DniRange<double>? scaleVariance, PreviewImageHandler? previewImageHandler = null)
         {
             angleVariance ??= new DniRange<int>(0, 0);
             shiftVariance ??= new DniRange<int>(0, 0);
             blurVariance ??= new DniRange<int>(0, 0);
+            scaleVariance ??= new DniRange<double>(0, 0);
 
             int width = img.Width;
             int height = img.Height;
@@ -76,16 +77,24 @@ namespace TestHarness.Library
             var bounds = new Rectangle(left, top, cropWidth, cropHeight);
             using var cropped = img.Clone(ctx => ctx.Crop(bounds));
 
-            // Create a square white canvas (to center drawing)
+            // Create a square white canvas(to center drawing)
             int squareSize = Math.Max(cropWidth + (margin * 2), cropHeight + (margin * 2));
             using var squareCanvas = new Image<Rgba32>(squareSize, squareSize, Color.White);
 
-            int offsetX = (squareSize - cropWidth) / 2;
-            int offsetY = (squareSize - cropHeight) / 2;
-            squareCanvas.Mutate(ctx => ctx.DrawImage(cropped, new Point(offsetX, offsetY), 1f));
+            // Apply random scaling
+            double scale = DniUtility.NextDouble(scaleVariance.Value.Min, scaleVariance.Value.Max);
+            int scaledWidth = (int)(cropWidth * scale);
+            int scaledHeight = (int)(cropHeight * scale);
 
+            using var scaled = cropped.Clone(ctx => ctx.Resize(scaledWidth, scaledHeight));
+
+            // Center scaled drawing
+            int offsetX = (squareSize - scaledWidth) / 2;
+            int offsetY = (squareSize - scaledHeight) / 2;
+            squareCanvas.Mutate(ctx => ctx.DrawImage(scaled, new Point(offsetX, offsetY), 1f));
+
+            // Apply rotation
             int angle = DniUtility.Random.Next(angleVariance.Value.Min, angleVariance.Value.Max);
-            // Small random rotation (for consistency with training)
             using var rotated = squareCanvas.Clone(ctx => ctx.Rotate(angle));
 
             // flatten the transparency onto a white background
@@ -95,7 +104,12 @@ namespace TestHarness.Library
             //Draw rotated image onto white background with a small random shift in position:
             flattened.Mutate(ctx => ctx.DrawImage(rotated, new Point(shiftX, shiftY), 1f));
 
-            flattened.Mutate(ctx => ctx.GaussianBlur(DniUtility.Random.Next(blurVariance.Value.Min, blurVariance.Value.Max)));
+            int blur = DniUtility.Random.Next(blurVariance.Value.Min, blurVariance.Value.Max);
+
+            if (blur > 0)
+            {
+                flattened.Mutate(ctx => ctx.GaussianBlur(blur));
+            }
 
             using var resized = flattened.Clone(ctx => ctx.Resize(resizeWidth, resizeHeight));
 
@@ -119,7 +133,7 @@ namespace TestHarness.Library
                 }
             });
 
-            //resized.Save($"C:\\NTDLS\\NTDLS.Determinet\\debug\\{Path.GetFileNameWithoutExtension(imagePath)}.png");
+            //resized.Save($"C:\\NTDLS\\NTDLS.Determinet\\DebugImages\\{Guid.NewGuid()}_{blur}.png");
 
             return pixels;
         }

@@ -61,6 +61,17 @@ namespace NTDLS.Determinet
             return maxIndex;
         }
 
+        public static double NextDouble(double minValue, double maxValue)
+        {
+            if (maxValue == minValue)
+                return maxValue;
+
+            if (maxValue <= minValue)
+                throw new ArgumentOutOfRangeException(nameof(maxValue), "maxValue must be greater than minValue.");
+
+            return Random.NextDouble() * (maxValue - minValue) + minValue;
+        }
+
         /// <summary>
         /// Determines whether a random event occurs based on the specified probability.
         /// </summary>

@@ -7,16 +7,18 @@ namespace TestHarness.Train
 {
     internal class Program
     {
+        const string sampleImagePath = "..\\..\\..\\..\\Sample Images\\Training";
+
         private static readonly char[] _networkOutputLabels = [
                 '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
                 'a', 'b', 'c', 'd', 'e', 'f','g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
                 'A', 'B', 'C', 'D', 'E', 'F','G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'
             ];
 
-        static double _initialLearningRate = 0.0005;  // Starting learning rate for training.
+        const double _initialLearningRate = 0.0005;  // Starting learning rate for training.
         const double _convergence = 0.000000001;    // Threshold for considering the training has converged.
         const int _cooldown = 5;                    // epochs to wait after each learning rate decay.
-        const int _patience = 5;                    // Number of epochs to wait before reducing learning rate once cost starts increasing or reaches a plateau.
+        const int _patience = 3;                    // Number of epochs to wait before reducing learning rate once cost starts increasing or reaches a plateau.
         const double _decayFactor = 0.8;            // Factor to reduce learning rate
         const int _trainingEpochs = 250;            // Total number of training epochs
         const double _minDelta = 0.001;             // minimum improvement threshold
@@ -29,46 +31,7 @@ namespace TestHarness.Train
         {
             var trainedModelPath = "..\\..\\..\\..\\Trained Models";
 
-            // Allow setting initial learning rate from command line for experimentation:
-            if (args.Length > 0 && string.IsNullOrWhiteSpace(args[0]) == false && double.TryParse(args[0], out var lr))
-            {
-                _initialLearningRate = lr;
-            }
 
-            var dni = TrainAndSave(trainedModelPath);
-
-            dni.Forward([]);
-
-            /*
-            int outputNode = 0;
-            double confidence = 0;
-
-
-            outputNode = DniUtility.GetIndexOfMaxValue(dni.Forward(GetImageGrayscaleBytes(@"C:\NTDLS\NTDLS.Determinet\Training Characters\0 (1).png", _imageWidth, _imageHeight)), out confidence);
-            Console.WriteLine($"Expected: 0: Result: {outputNode:n0}, confidence: {confidence:n4}");
-            outputNode = DniUtility.GetIndexOfMaxValue(dni.Forward(GetImageGrayscaleBytes(@"C:\NTDLS\NTDLS.Determinet\Training Characters\1 (1).png", _imageWidth, _imageHeight)), out confidence);
-            Console.WriteLine($"Expected: 1: Result: {outputNode:n0}, confidence: {confidence:n4}");
-            outputNode = DniUtility.GetIndexOfMaxValue(dni.Forward(GetImageGrayscaleBytes(@"C:\NTDLS\NTDLS.Determinet\Training Characters\2 (1).png", _imageWidth, _imageHeight)), out confidence);
-            Console.WriteLine($"Expected: 2: Result: {outputNode:n0}, confidence: {confidence:n4}");
-            outputNode = DniUtility.GetIndexOfMaxValue(dni.Forward(GetImageGrayscaleBytes(@"C:\NTDLS\NTDLS.Determinet\Training Characters\3 (1).png", _imageWidth, _imageHeight)), out confidence);
-            Console.WriteLine($"Expected: 3: Result: {outputNode:n0}, confidence: {confidence:n4}");
-            outputNode = DniUtility.GetIndexOfMaxValue(dni.Forward(GetImageGrayscaleBytes(@"C:\NTDLS\NTDLS.Determinet\Training Characters\4 (1).png", _imageWidth, _imageHeight)), out confidence);
-            Console.WriteLine($"Expected: 4: Result: {outputNode:n0}, confidence: {confidence:n4}");
-            outputNode = DniUtility.GetIndexOfMaxValue(dni.Forward(GetImageGrayscaleBytes(@"C:\NTDLS\NTDLS.Determinet\Training Characters\5 (1).png", _imageWidth, _imageHeight)), out confidence);
-            Console.WriteLine($"Expected: 5: Result: {outputNode:n0}, confidence: {confidence:n4}");
-            outputNode = DniUtility.GetIndexOfMaxValue(dni.Forward(GetImageGrayscaleBytes(@"C:\NTDLS\NTDLS.Determinet\Training Characters\6 (1).png", _imageWidth, _imageHeight)), out confidence);
-            Console.WriteLine($"Expected: 6: Result: {outputNode:n0}, confidence: {confidence:n4}");
-            outputNode = DniUtility.GetIndexOfMaxValue(dni.Forward(GetImageGrayscaleBytes(@"C:\NTDLS\NTDLS.Determinet\Training Characters\7 (1).png", _imageWidth, _imageHeight)), out confidence);
-            Console.WriteLine($"Expected: 7: Result: {outputNode:n0}, confidence: {confidence:n4}");
-            outputNode = DniUtility.GetIndexOfMaxValue(dni.Forward(GetImageGrayscaleBytes(@"C:\NTDLS\NTDLS.Determinet\Training Characters\8 (1).png", _imageWidth, _imageHeight)), out confidence);
-            Console.WriteLine($"Expected: 8: Result: {outputNode:n0}, confidence: {confidence:n4}");
-            outputNode = DniUtility.GetIndexOfMaxValue(dni.Forward(GetImageGrayscaleBytes(@"C:\NTDLS\NTDLS.Determinet\Training Characters\9 (1).png", _imageWidth, _imageHeight)), out confidence);
-            Console.WriteLine($"Expected: 9: Result: {outputNode:n0}, confidence: {confidence:n4}");
-            */
-        }
-
-        static DniNeuralNetwork TrainAndSave(string trainedModelPath)
-        {
             DniNeuralNetwork dni;
 
             var existing = Path.Combine(trainedModelPath, "CharacterRecognition_Best.dni");
@@ -121,12 +84,51 @@ namespace TestHarness.Train
                 dni = new DniNeuralNetwork(configuration);
             }
 
+            // Allow setting initial learning rate from command line for experimentation:
+            if (args.Length > 0 && string.IsNullOrWhiteSpace(args[0]) == false && double.TryParse(args[0], out var overrideLearningRate))
+            {
+                dni.Parameters.Set(Network.LearningRate, overrideLearningRate);
+            }
+
+            TrainAndSave(dni, trainedModelPath);
+
+            //dni.Forward([]);
+
+            /*
+            int outputNode = 0;
+            double confidence = 0;
+
+            outputNode = DniUtility.GetIndexOfMaxValue(dni.Forward(GetImageGrayscaleBytes(@"C:\NTDLS\NTDLS.Determinet\Training Characters\0 (1).png", _imageWidth, _imageHeight)), out confidence);
+            Console.WriteLine($"Expected: 0: Result: {outputNode:n0}, confidence: {confidence:n4}");
+            outputNode = DniUtility.GetIndexOfMaxValue(dni.Forward(GetImageGrayscaleBytes(@"C:\NTDLS\NTDLS.Determinet\Training Characters\1 (1).png", _imageWidth, _imageHeight)), out confidence);
+            Console.WriteLine($"Expected: 1: Result: {outputNode:n0}, confidence: {confidence:n4}");
+            outputNode = DniUtility.GetIndexOfMaxValue(dni.Forward(GetImageGrayscaleBytes(@"C:\NTDLS\NTDLS.Determinet\Training Characters\2 (1).png", _imageWidth, _imageHeight)), out confidence);
+            Console.WriteLine($"Expected: 2: Result: {outputNode:n0}, confidence: {confidence:n4}");
+            outputNode = DniUtility.GetIndexOfMaxValue(dni.Forward(GetImageGrayscaleBytes(@"C:\NTDLS\NTDLS.Determinet\Training Characters\3 (1).png", _imageWidth, _imageHeight)), out confidence);
+            Console.WriteLine($"Expected: 3: Result: {outputNode:n0}, confidence: {confidence:n4}");
+            outputNode = DniUtility.GetIndexOfMaxValue(dni.Forward(GetImageGrayscaleBytes(@"C:\NTDLS\NTDLS.Determinet\Training Characters\4 (1).png", _imageWidth, _imageHeight)), out confidence);
+            Console.WriteLine($"Expected: 4: Result: {outputNode:n0}, confidence: {confidence:n4}");
+            outputNode = DniUtility.GetIndexOfMaxValue(dni.Forward(GetImageGrayscaleBytes(@"C:\NTDLS\NTDLS.Determinet\Training Characters\5 (1).png", _imageWidth, _imageHeight)), out confidence);
+            Console.WriteLine($"Expected: 5: Result: {outputNode:n0}, confidence: {confidence:n4}");
+            outputNode = DniUtility.GetIndexOfMaxValue(dni.Forward(GetImageGrayscaleBytes(@"C:\NTDLS\NTDLS.Determinet\Training Characters\6 (1).png", _imageWidth, _imageHeight)), out confidence);
+            Console.WriteLine($"Expected: 6: Result: {outputNode:n0}, confidence: {confidence:n4}");
+            outputNode = DniUtility.GetIndexOfMaxValue(dni.Forward(GetImageGrayscaleBytes(@"C:\NTDLS\NTDLS.Determinet\Training Characters\7 (1).png", _imageWidth, _imageHeight)), out confidence);
+            Console.WriteLine($"Expected: 7: Result: {outputNode:n0}, confidence: {confidence:n4}");
+            outputNode = DniUtility.GetIndexOfMaxValue(dni.Forward(GetImageGrayscaleBytes(@"C:\NTDLS\NTDLS.Determinet\Training Characters\8 (1).png", _imageWidth, _imageHeight)), out confidence);
+            Console.WriteLine($"Expected: 8: Result: {outputNode:n0}, confidence: {confidence:n4}");
+            outputNode = DniUtility.GetIndexOfMaxValue(dni.Forward(GetImageGrayscaleBytes(@"C:\NTDLS\NTDLS.Determinet\Training Characters\9 (1).png", _imageWidth, _imageHeight)), out confidence);
+            Console.WriteLine($"Expected: 9: Result: {outputNode:n0}, confidence: {confidence:n4}");
+            */
+        }
+
+        static DniNeuralNetwork TrainAndSave(DniNeuralNetwork dni, string trainedModelPath)
+        {
             Console.WriteLine($"Loading image paths...");
-            var backgroundLoader = new BackgroundLoader(dni, @"..\..\..\..\Training Characters");
+            var backgroundLoader = new BackgroundLoader(dni, sampleImagePath,
+                Constants.ImageWidth, Constants.ImageHeight, new DniRange<int>(-5, 5), new DniRange<int>(-3, 3), new DniRange<int>(1, 4), new DniRange<double>(0.5, 1));
 
-            var learningRate = Math.Min(dni.Parameters.Get(Network.LearningRate, _initialLearningRate), _initialLearningRate);
+            var learningRate = dni.Parameters.Get(Network.LearningRate, _initialLearningRate);
 
-            double previousEpochLoss = double.MaxValue;
             double bestLoss = double.MaxValue;
             int epochsSinceImprovement = 0;
             int cooldownCounter = _cooldown;
@@ -219,8 +221,6 @@ namespace TestHarness.Train
                 }
 
                 #endregion
-
-                previousEpochLoss = epochLoss;
             }
 
             return dni;

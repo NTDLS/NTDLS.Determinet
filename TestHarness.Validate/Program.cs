@@ -1,4 +1,5 @@
 ﻿using NTDLS.Determinet;
+using NTDLS.Determinet.Types;
 using TestHarness.Library;
 
 namespace TestHarness.Validate
@@ -7,11 +8,11 @@ namespace TestHarness.Validate
     {
         static void Main(string[] args)
         {
-            var sampleImagePath = "..\\..\\..\\..\\Training Characters";
+            var sampleImagePath = "..\\..\\..\\..\\Sample Images\\Validation";
             var trainedModelPath = "..\\..\\..\\..\\Trained Models";
 
             string file = "CharacterRecognition_Best.dni";
-            if(args.Length > 0)
+            if (args.Length > 0)
             {
                 file = args[0];
             }
@@ -26,7 +27,8 @@ namespace TestHarness.Validate
             var dni = DniNeuralNetwork.LoadFromFile(existing)
                 ?? throw new Exception("Failed to load the network from file.");
 
-            var backgroundLoader = new BackgroundLoader(dni, sampleImagePath);
+            var backgroundLoader = new BackgroundLoader(dni, sampleImagePath,
+                Constants.ImageWidth, Constants.ImageHeight, DniRange<int>.Zero, DniRange<int>.Zero, new DniRange<int>(4, 4), DniRange<double>.One);
 
             backgroundLoader.BeginPopulation(0);
 

@@ -36,7 +36,7 @@ namespace TestHarness.Draw
             if (File.Exists(debugModelFile))
             {
                 LoadModelFromFile(debugModelFile);
-                //simpleDrawControl.LoadImageFromFile("C:\\NTDLS\\NTDLS.Determinet\\Training Characters\\K 004 Heebo Thin.png");
+                //simpleDrawControl.LoadImageFromFile("C:\\NTDLS\\NTDLS.Determinet\\Sample Images\Training\\K 004 Heebo Thin.png");
             }
         }
 
@@ -46,7 +46,7 @@ namespace TestHarness.Draw
 
             var image = ConvertBitmapToImageSharp(bitmap);
 
-            var inputBits = ImageUtility.GetImageGrayscaleBytes(image, Constants.ImageWidth, Constants.ImageHeight, DniRange<int>.Zero, DniRange<int>.Zero, new DniRange<int>(4, 8),
+            var inputBits = ImageUtility.GetImageGrayscaleBytes(image, Constants.ImageWidth, Constants.ImageHeight, DniRange<int>.Zero, DniRange<int>.Zero, new DniRange<int>(1, 4), DniRange<double>.One,
                 (img) =>
                 {
                     var previewBmp = ToBitmap(img);

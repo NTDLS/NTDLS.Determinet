@@ -1,4 +1,5 @@
 ﻿using NTDLS.Determinet;
+using NTDLS.Determinet.Types;
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 
@@ -12,12 +13,27 @@ namespace TestHarness.Library
         private List<TrainingSample> _trainingSample = new();
         private readonly ConcurrentStack<PreparedTrainingSample> _stack = new();
 
+        private int _resizeWidth;
+        private int _resizeHeight;
+        private DniRange<int>? _angleVariance;
+        private DniRange<int>? _shiftVariance;
+        private DniRange<int>? _blurVariance;
+        private DniRange<double>? _scaleVariance;
+
         public int Count => _trainingSample.Count;
 
         public bool IsComplete => _threadsCompleted == _threadCount;
 
-        public BackgroundLoader(DniNeuralNetwork dni, string path)
+        public BackgroundLoader(DniNeuralNetwork dni, string path, int resizeWidth, int resizeHeight,
+            DniRange<int>? angleVariance, DniRange<int>? shiftVariance, DniRange<int>? blurVariance, DniRange<double>? scaleVariance)
         {
+            _resizeWidth = resizeWidth;
+            _resizeHeight = resizeHeight;
+            _angleVariance = angleVariance;
+            _shiftVariance = shiftVariance;
+            _blurVariance = blurVariance;
+            _scaleVariance = scaleVariance;
+
             if (dni.OutputLabels == null || dni.OutputLabels.Length == 0)
                 throw new InvalidOperationException("DNI Neural Network must have OutputLabels defined to load training sample.");
 
@@ -71,7 +87,11 @@ namespace TestHarness.Library
                 {
                     while (TryGetRandomTrainingSample(epoch, out var sample))
                     {
-                        _stack.Push(new PreparedTrainingSample(sample));
+                        var bits = ImageUtility.GetImageGrayscaleBytes(sample.FileName, _resizeWidth,
+                            _resizeHeight, _angleVariance, _shiftVariance, _blurVariance, _scaleVariance)
+                        ?? throw new Exception($"Failed to load sample image: {sample.FileName}");
+
+                        _stack.Push(new PreparedTrainingSample(sample, bits));
 
                         while (_stack.Count >= 100)
                         {
