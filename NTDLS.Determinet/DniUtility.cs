@@ -16,6 +16,11 @@ namespace NTDLS.Determinet
     {
         private static Random? _random = null;
 
+        internal static readonly ParallelOptions ParallelOptions = new()
+        {
+            MaxDegreeOfParallelism = Environment.ProcessorCount
+        };
+
         public static Random Random
         {
             get

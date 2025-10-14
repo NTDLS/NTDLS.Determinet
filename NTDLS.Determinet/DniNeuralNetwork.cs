@@ -16,15 +16,35 @@ namespace NTDLS.Determinet
     /// also supports saving and loading the network's state to and from a file for persistence.</remarks>
     public class DniNeuralNetwork
     {
-        private static readonly ParallelOptions _parallelOptions = new()
-        {
-            MaxDegreeOfParallelism = Environment.ProcessorCount
-        };
+        /// <summary>
+        /// Gets the current state of being for the DNI (Digital Neural Interface).
+        /// </summary>
+        internal DniStateOfBeing State { get; private set; } = new();
 
-        public DniStateOfBeing State { get; private set; } = new();
+        #region State Passthroughs.
 
+        /// <summary>
+        /// Gets the collection of named parameters associated with the current state.
+        /// </summary>
         public DniNamedParameterCollection Parameters => State.Parameters;
+        public List<DniLayer> Layers => State.Layers;
+        public List<DniSynapse> Synapses => State.Synapses;
+        public string[]? InputLabels => State.InputLabels;
+        public string[]? OutputLabels => State.OutputLabels;
 
+        #endregion
+
+        #region Constructors.
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="DniNeuralNetwork"/> class using the specified configuration.
+        /// </summary>
+        /// <remarks>This constructor sets up the neural network by configuring its layers (input, hidden,
+        /// and output) and initializing weights and biases. The input layer, hidden layers, and output layer are
+        /// defined based on the provided <paramref name="configuration"/>. The learning rate is also set during
+        /// initialization.</remarks>
+        /// <param name="configuration">The configuration settings for the neural network, including learning rate, input layer, hidden layers, and
+        /// output layer.</param>
         public DniNeuralNetwork(DniConfiguration configuration)
         {
             State.Parameters.Set(Network.LearningRate, configuration.LearningRate);
@@ -49,6 +69,10 @@ namespace NTDLS.Determinet
         {
             //Only used for deserialization.
         }
+
+        #endregion
+
+        #region Initilization.
 
         /// <summary>
         /// Initializes the weights and biases for the neural network layers.
@@ -85,6 +109,10 @@ namespace NTDLS.Determinet
                 State.Synapses.Add(new DniSynapse(layerWeights, layerBiases));
             }
         }
+
+        #endregion
+
+        #region Forward.
 
         /// <summary>
         /// Computes the output of the model for the given input values.
@@ -237,7 +265,7 @@ namespace NTDLS.Determinet
             int layerSize = biases.Length;
             double[] output = new double[layerSize];
 
-            Parallel.For(0, layerSize, _parallelOptions, j =>
+            Parallel.For(0, layerSize, DniUtility.ParallelOptions, j =>
             {
                 double sum = biases[j];
                 for (int i = 0; i < inputs.Length; i++)
@@ -254,23 +282,29 @@ namespace NTDLS.Determinet
             return output;
         }
 
+        #endregion
+
+        #region Training.
+
         /// <summary>
-        /// Computes the gradient of the cross-entropy loss function with respect to the predicted values.
+        /// Trains the model using the provided input data and expected output values.
         /// </summary>
-        /// <param name="predicted">An array of predicted probabilities, where each value represents the model's predicted probability for a
-        /// class. Values should be in the range [0, 1].</param>
-        /// <param name="actual">An array of actual class probabilities, where each value represents the true probability for a class.
-        /// Typically, this is a one-hot encoded array.</param>
-        /// <returns>An array representing the gradient of the cross-entropy loss for each class. Each value is the difference
-        /// between the predicted and actual probabilities.</returns>
-        private static double[] CrossEntropyLossGradient(double[] predicted, double[] actual)
+        /// <param name="inputs">An array of input values representing the features for training.</param>
+        /// <param name="expected">An array of expected output values corresponding to the inputs.</param>
+        /// <returns>The computed loss value, which quantifies the difference between the model's predictions and the expected outputs.</returns>
+        /// <exception cref="Exception">Thrown if the learning rate is less than or equal to zero.</exception>
+        public double Train(double[] inputs, double[] expected)
         {
-            var gradient = new double[predicted.Length];
-            for (int i = 0; i < predicted.Length; i++)
-            {
-                gradient[i] = predicted[i] - actual[i];
-            }
-            return gradient;
+            var predictions = Forward(inputs, true);
+
+            // Compute numerically-stable loss
+            double loss = CrossEntropy(predictions, expected);
+
+            Backpropagate(inputs, expected);
+
+            State.Parameters.Set(Network.ComputedLoss, loss);
+
+            return loss;
         }
 
         /// <summary>
@@ -318,7 +352,7 @@ namespace NTDLS.Determinet
             {
                 var layerError = new double[State.Layers[i].NodeCount];
 
-                Parallel.For(0, State.Layers[i].NodeCount, _parallelOptions, j =>
+                Parallel.For(0, State.Layers[i].NodeCount, DniUtility.ParallelOptions, j =>
                 {
                     double sum = 0.0;
                     for (int k = 0; k < State.Layers[i + 1].NodeCount; k++)
@@ -339,7 +373,7 @@ namespace NTDLS.Determinet
                 var activations = State.Layers[i].Activations;
                 var error = errors[i];
 
-                Parallel.For(0, weights.GetLength(0), _parallelOptions, j =>
+                Parallel.For(0, weights.GetLength(0), DniUtility.ParallelOptions, j =>
                 {
                     for (int k = 0; k < weights.GetLength(1); k++)
                     {
@@ -396,24 +430,22 @@ namespace NTDLS.Determinet
         }
 
         /// <summary>
-        /// Trains the model using the provided input data and expected output values.
+        /// Computes the gradient of the cross-entropy loss function with respect to the predicted values.
         /// </summary>
-        /// <param name="inputs">An array of input values representing the features for training.</param>
-        /// <param name="expected">An array of expected output values corresponding to the inputs.</param>
-        /// <returns>The computed loss value, which quantifies the difference between the model's predictions and the expected outputs.</returns>
-        /// <exception cref="Exception">Thrown if the learning rate is less than or equal to zero.</exception>
-        public double Train(double[] inputs, double[] expected)
+        /// <param name="predicted">An array of predicted probabilities, where each value represents the model's predicted probability for a
+        /// class. Values should be in the range [0, 1].</param>
+        /// <param name="actual">An array of actual class probabilities, where each value represents the true probability for a class.
+        /// Typically, this is a one-hot encoded array.</param>
+        /// <returns>An array representing the gradient of the cross-entropy loss for each class. Each value is the difference
+        /// between the predicted and actual probabilities.</returns>
+        private static double[] CrossEntropyLossGradient(double[] predicted, double[] actual)
         {
-            var predictions = Forward(inputs, true);
-
-            // Compute numerically-stable loss
-            double loss = CrossEntropy(predictions, expected);
-
-            Backpropagate(inputs, expected);
-
-            State.Parameters.Set(Network.ComputedLoss, loss);
-
-            return loss;
+            var gradient = new double[predicted.Length];
+            for (int i = 0; i < predicted.Length; i++)
+            {
+                gradient[i] = predicted[i] - actual[i];
+            }
+            return gradient;
         }
 
         /// <summary>
@@ -438,6 +470,177 @@ namespace NTDLS.Determinet
             }
             return loss;
         }
+
+        #endregion
+
+        #region Batch Training.
+
+        /// <summary>
+        /// Trains the model using a mini-batch of samples acquired from the delegate.
+        /// </summary>
+        /// <param name="batchSize">Number of samples per batch.</param>
+        /// <param name="dataProvider">
+        /// Callback invoked once per sample.  
+        /// Should return (inputs, expected) for the next training item, or null to signal dataset end.
+        /// </param>
+        /// <returns>The average loss across the processed batch (or zero if no samples).</returns>
+        public double TrainBatch(int batchSize, Func<(double[] inputs, double[] expected)?> dataProvider)
+        {
+            if (batchSize <= 0)
+                throw new ArgumentOutOfRangeException(nameof(batchSize), "Batch size must be > 0.");
+
+            double lr = State.Parameters.Get<double>(Network.LearningRate);
+            double decay = State.Parameters.Get<double>(Network.WeightDecay);
+            double clip = State.Parameters.Get<double>(Network.GradientClip);
+
+            // Prepare accumulators for gradients.
+            var weightGrads = State.Synapses
+                .Select(s => new double[s.Weights.GetLength(0), s.Weights.GetLength(1)])
+                .ToList();
+
+            var biasGrads = State.Synapses
+                .Select(s => new double[s.Biases.Length])
+                .ToList();
+
+            double totalLoss = 0.0;
+            int actualBatchCount = 0;
+
+            // Gather and process `batchSize` samples.
+            for (int b = 0; b < batchSize; b++)
+            {
+                var sample = dataProvider();
+                if (sample == null)
+                    break; // dataset exhausted early.
+
+                var (inputs, expected) = sample.Value;
+                var predicted = Forward(inputs, true);
+                totalLoss += CrossEntropy(predicted, expected);
+                actualBatchCount++;
+
+                // Backpropagate, but accumulate gradients instead of applying.
+                var (wGrads, bGrads) = ComputeGradients(inputs, expected);
+
+                for (int i = 0; i < State.Synapses.Count; i++)
+                {
+                    var gW = weightGrads[i];
+                    var gB = biasGrads[i];
+                    var dW = wGrads[i];
+                    var dB = bGrads[i];
+
+                    for (int r = 0; r < gW.GetLength(0); r++)
+                        for (int c = 0; c < gW.GetLength(1); c++)
+                            gW[r, c] += dW[r, c];
+
+                    for (int j = 0; j < gB.Length; j++)
+                        gB[j] += dB[j];
+                }
+            }
+
+            // If no samples provided, just return.
+            if (actualBatchCount == 0)
+                return 0.0;
+
+            // Apply averaged gradients.
+            for (int i = 0; i < State.Synapses.Count; i++)
+            {
+                var synapse = State.Synapses[i];
+                var W = synapse.Weights;
+                var B = synapse.Biases;
+                var gW = weightGrads[i];
+                var gB = biasGrads[i];
+
+                int rows = W.GetLength(0);
+                int cols = W.GetLength(1);
+
+                for (int r = 0; r < rows; r++)
+                {
+                    for (int c = 0; c < cols; c++)
+                    {
+                        double grad = (gW[r, c] / actualBatchCount) + decay * W[r, c];
+                        grad = Math.Clamp(grad, -clip, clip);
+                        W[r, c] -= lr * grad;
+                    }
+                }
+
+                for (int j = 0; j < B.Length; j++)
+                {
+                    double grad = gB[j] / actualBatchCount;
+                    grad = Math.Clamp(grad, -clip, clip);
+                    B[j] -= lr * grad;
+                }
+            }
+
+            var loss = totalLoss / actualBatchCount;
+
+            State.Parameters.Set(Network.ComputedLoss, loss);
+
+            return loss;
+        }
+
+        private (List<double[,]> WeightGrads, List<double[]> BiasGrads) ComputeGradients(double[] inputs, double[] expected)
+        {
+            var predicted = Forward(inputs, true);
+
+            List<double[]> errors;
+            if (State.Layers.Last().ActivationFunction is DniSimpleSoftMaxFunction)
+            {
+                errors = new() { CrossEntropyLossGradient(predicted, expected) };
+            }
+            else
+            {
+                var outputError = new double[predicted.Length];
+                for (int i = 0; i < predicted.Length; i++)
+                {
+                    var pred = predicted[i];
+                    var target = expected[i];
+                    outputError[i] = (pred - target) * State.Layers.Last().ActivateDerivative(i);
+                }
+                errors = new() { outputError };
+            }
+
+            // Backpropagate
+            for (int i = State.Layers.Count - 2; i > 0; i--)
+            {
+                var layerError = new double[State.Layers[i].NodeCount];
+                for (int j = 0; j < layerError.Length; j++)
+                {
+                    double sum = 0.0;
+                    for (int k = 0; k < State.Layers[i + 1].NodeCount; k++)
+                        sum += errors.First()[k] * State.Synapses[i].Weights[j, k];
+                    layerError[j] = sum * State.Layers[i].ActivateDerivative(j);
+                }
+                errors.Insert(0, layerError);
+            }
+
+            var weightGrads = new List<double[,]>();
+            var biasGrads = new List<double[]>();
+
+            for (int i = 0; i < State.Synapses.Count; i++)
+            {
+                var synapse = State.Synapses[i];
+                var activations = State.Layers[i].Activations;
+                var error = errors[i];
+
+                var wGrad = new double[synapse.Weights.GetLength(0), synapse.Weights.GetLength(1)];
+                var bGrad = new double[synapse.Biases.Length];
+
+                for (int j = 0; j < wGrad.GetLength(0); j++)
+                    for (int k = 0; k < wGrad.GetLength(1); k++)
+                        wGrad[j, k] = error[k] * activations[j];
+
+                for (int j = 0; j < bGrad.Length; j++)
+                    bGrad[j] = error[j];
+
+                weightGrads.Add(wGrad);
+                biasGrads.Add(bGrad);
+            }
+
+            return (weightGrads, biasGrads);
+        }
+
+        #endregion
+
+        #region Serilization.
 
         /// <summary>
         /// Saves the current state to a file at the specified path.
@@ -481,44 +684,6 @@ namespace NTDLS.Determinet
             return new DniNeuralNetwork { State = state };
         }
 
-        public string[]? InputLabels
-        {
-            get
-            {
-                var layer = State.Layers.Last()
-                    ?? throw new Exception("Input layer is not defined.");
-                return layer.Labels;
-            }
-            set
-            {
-                var layer = State.Layers.Last()
-                    ?? throw new Exception("Input layer is not defined.");
-
-                if (value != null && value.Length != layer.NodeCount)
-                    throw new Exception("Input layer label count does not match node count.");
-
-                layer.Labels = value;
-            }
-        }
-
-        public string[]? OutputLabels
-        {
-            get
-            {
-                var layer = State.Layers.Last()
-                    ?? throw new Exception("Output layer is not defined.");
-                return layer.Labels;
-            }
-            set
-            {
-                var layer = State.Layers.Last()
-                    ?? throw new Exception("Output layer is not defined.");
-
-                if (value != null && value.Length != layer.NodeCount)
-                    throw new Exception("Output layer label count does not match node count.");
-
-                layer.Labels = value;
-            }
-        }
+        #endregion
     }
 }

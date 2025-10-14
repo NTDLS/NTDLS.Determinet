@@ -33,12 +33,6 @@ namespace OCR
             var dni = DniNeuralNetwork.LoadFromFile(@"C:\NTDLS\NTDLS.Determinet\TestHarness\bin\Release\net9.0\trained.dni")
                 ?? throw new Exception("Failed to load the network from file.");
 
-            // Remove "UseBatchNorm" parameter from all layers if it exists
-            foreach (var layer in dni.State.Layers)
-            {
-                layer.Parameters.Remove("UseBatchNorm");
-            }
-
             var inputPath = "C:\\NTDLS\\NTDLS.Determinet\\OCR\\screenshot.png";
             using var image = Image.Load<Rgba32>(inputPath);
 
