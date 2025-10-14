@@ -21,6 +21,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "NonWorkingLabs", "NonWorkin
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tools", "Tools", "{594E97BF-F92C-42A5-B1D2-EFFE28351008}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestHarness.Validate", "TestHarness.Validate\TestHarness.Validate.csproj", "{3770F0F6-0834-4DC9-97E4-070C32EC8C15}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -51,6 +53,10 @@ Global
 		{FE03EED6-70F8-67B2-2AF0-AEDAC2FC6AF1}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FE03EED6-70F8-67B2-2AF0-AEDAC2FC6AF1}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{FE03EED6-70F8-67B2-2AF0-AEDAC2FC6AF1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3770F0F6-0834-4DC9-97E4-070C32EC8C15}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3770F0F6-0834-4DC9-97E4-070C32EC8C15}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3770F0F6-0834-4DC9-97E4-070C32EC8C15}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3770F0F6-0834-4DC9-97E4-070C32EC8C15}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -61,6 +67,7 @@ Global
 		{7920EDB9-FE93-72C6-0154-8749AF6B6587} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 		{DA0F16F1-709D-2DEE-492C-09163C21DF1C} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 		{FE03EED6-70F8-67B2-2AF0-AEDAC2FC6AF1} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
+		{3770F0F6-0834-4DC9-97E4-070C32EC8C15} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {B5F54FF5-FA35-41FE-AE5D-0F2F54EF5BB2}
