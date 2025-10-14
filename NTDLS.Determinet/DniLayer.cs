@@ -141,6 +141,15 @@ namespace NTDLS.Determinet
                 DniActivationType.LeakyReLU => new DniLeakyReLUFunction(Parameters),
                 DniActivationType.SoftMax => new DniSoftMaxFunction(Parameters),
                 DniActivationType.SimpleSoftMax => new DniSimpleSoftMaxFunction(Parameters),
+                DniActivationType.ELU => new DniELUFunction(Parameters),
+                DniActivationType.Gaussian => new DniGaussianFunction(Parameters),
+                DniActivationType.HardSigmoid => new DniHardSigmoidFunction(Parameters),
+                DniActivationType.HardTanh => new DniHardTanhFunction(Parameters),
+                DniActivationType.Mish => new DniMishFunction(Parameters),
+                DniActivationType.SELU => new DniSELUFunction(Parameters),
+                DniActivationType.SoftSign => new DniSoftSignFunction(Parameters),
+                DniActivationType.Swish => new DniSwishFunction(Parameters),
+                DniActivationType.SoftPlus => new DniSoftPlusFunction(Parameters),
                 _ => throw new NotImplementedException($"Unknown activation type: [{ActivationType}].")
             };
         }

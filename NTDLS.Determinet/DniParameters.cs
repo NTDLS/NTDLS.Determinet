@@ -140,5 +140,44 @@ namespace NTDLS.Determinet
             /// minimum and maximum value. The default range is from -1 to +1.</remarks>
             public static readonly DniNamedParameter Range = new("Piecewise_AlphaRange", typeof(DniRange), new DniRange(-1, +1));
         }
+
+        /// <summary>
+        /// Provides a collection of predefined parameters for the Exponential Linear Unit (ELU) activation function.
+        /// </summary>
+        /// <remarks>This class contains static members representing named parameters commonly used with
+        /// the ELU activation function.</remarks>
+        public static class ELU
+        {
+            /// <summary>
+            /// Represents the named parameter for the alpha value, typically used in calculations or configurations.
+            /// </summary>
+            /// <remarks>The parameter is identified by the name "ELU_Alpha" and is associated with
+            /// the <see cref="double"/> type.  The default value is set to 1.</remarks>
+            public static readonly DniNamedParameter Alpha = new("ELU_Alpha", typeof(double), 1);
+        }
+
+        /// <summary>
+        /// Provides predefined parameters for the Scaled Exponential Linear Unit (SELU) activation function.
+        /// </summary>
+        /// <remarks>The SELU class defines two constants, <see cref="Alpha"/> and <see cref="Lambda"/>,
+        /// which are commonly used in the SELU activation function. These parameters are based on the original
+        /// formulation of SELU and are intended for use in machine learning and neural network applications.</remarks>
+        public static class SELU
+        {
+            /// <summary>
+            /// Represents the alpha parameter for the SELU activation function.
+            /// </summary>
+            /// <remarks>This parameter is used in the Scaled Exponential Linear Unit (SELU)
+            /// activation function,  which is commonly applied in neural network computations. The default value is
+            /// 1.67326.</remarks>
+            public static readonly DniNamedParameter Alpha = new("SELU_Alpha", typeof(double), 1.67326);
+            /// <summary>
+            /// Represents the lambda parameter used in the SELU (Scaled Exponential Linear Unit) activation function.
+            /// </summary>
+            /// <remarks>This parameter is a constant value commonly used in the SELU activation
+            /// function to ensure self-normalizing properties. The default value is <c>1.0507</c>, which is derived
+            /// from the original SELU paper.</remarks>
+            public static readonly DniNamedParameter Lambda = new("SELU_Lambda", typeof(double), 1.0507);
+        }
     }
 }
