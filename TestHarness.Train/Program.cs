@@ -1,6 +1,5 @@
 ﻿using NTDLS.Determinet;
 using NTDLS.Determinet.Types;
-using System.Collections.Concurrent;
 using TestHarness.Library;
 using static NTDLS.Determinet.DniParameters;
 
@@ -77,11 +76,6 @@ namespace TestHarness.Train
             {
                 dni = DniNeuralNetwork.LoadFromFile(existing)
                     ?? throw new Exception("Failed to load the network from file.");
-
-                //var computedLoss = dni.Parameters.Get<double>("BatchLoss");
-
-                //dni.Parameters.Set("BatchLoss", 3.14159);
-
             }
             else
             {
@@ -128,7 +122,7 @@ namespace TestHarness.Train
             }
 
             Console.WriteLine($"Loading image paths...");
-            var trainingModels = BackgroundLoader.LoadTrainingModels(dni, @"C:\NTDLS\NTDLS.Determinet\Training Characters");
+            var backgroundLoader = new BackgroundLoader(dni, @"..\..\..\..\Training Characters");
 
             var learningRate = Math.Min(dni.Parameters.Get(Network.LearningRate, _initialLearningRate), _initialLearningRate);
 
@@ -138,54 +132,29 @@ namespace TestHarness.Train
             int cooldownCounter = _cooldown;
 
             Console.WriteLine($"Starting backlog threads...");
-            ConcurrentStack<BacklogModel> backlogModels = new();
 
             for (int epoch = 0; epoch < _trainingEpochs; epoch++)
             {
+                backgroundLoader.BeginPopulation(epoch);
+
                 dni.Parameters.Set(Network.LearningRate, learningRate);
 
                 double epochLoss = 0;
-                int samplesProcessed = 0;
-                int threadCount = Environment.ProcessorCount;
-                int threadsCompleted = 0;
-
-                for (int i = 0; i < threadCount; i++)
-                {
-                    Task.Run(() =>
-                    {
-                        while (BackgroundLoader.TryGetRandomTrainingModel(trainingModels, epoch, out var model))
-                        {
-                            backlogModels.Push(new BacklogModel(model));
-
-                            while (backlogModels.Count >= 100)
-                            {
-                                Thread.Sleep(10); // Let the backlog get processed a bit before adding more.
-                            }
-                        }
-
-                        Interlocked.Increment(ref threadsCompleted);
-                    });
-                }
-
+                double samplesProcessed = 0;
 
                 if (epoch == 0)
                 {
                     Console.WriteLine($"Training with learning Rate: {learningRate:n10}");
                 }
 
-                while (backlogModels.TryPop(out var backlogModel) || threadsCompleted != threadCount)
+                while (backgroundLoader.Pop(out var preparedSample))
                 {
-                    if (backlogModel == null)
-                    {
-                        Thread.Sleep(10);
-                    }
-                    else
-                    {
-                        var loss = dni.Train(backlogModel.Bits, backlogModel.Model.Expectation);
-                        epochLoss += loss;
-                        //Console.WriteLine($"{loss:n10}");
-                        samplesProcessed++;
-                    }
+                    var loss = dni.Train(preparedSample.Bits, preparedSample.Sample.Expectation);
+                    epochLoss += loss;
+                    //Console.WriteLine($"{loss:n10}");
+                    samplesProcessed++;
+
+                    Console.Write($"{samplesProcessed:n0} of {backgroundLoader.Count:n0} ({((samplesProcessed / backgroundLoader.Count) * 100.0):n2}%)\r");
                 }
 
                 /*

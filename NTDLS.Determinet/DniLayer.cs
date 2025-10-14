@@ -68,7 +68,8 @@ namespace NTDLS.Determinet
         #endregion
 
         /// <summary>
-        /// Gets or sets an optional array of labels associated with the entity.
+        /// Gets or sets an optional array of labels associated with the layer.
+        /// These are only used if the layer is an input or output layer.
         /// </summary>
         [ProtoMember(9)] public string[]? Labels { get; set; }
 

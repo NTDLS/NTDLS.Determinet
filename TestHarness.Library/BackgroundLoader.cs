@@ -1,16 +1,25 @@
 ﻿using NTDLS.Determinet;
+using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 
 namespace TestHarness.Library
 {
-    public static class BackgroundLoader
+    public class BackgroundLoader
     {
-        public static List<TrainingModel> LoadTrainingModels(DniNeuralNetwork dni, string path)
+        private readonly Lock _lockGetRandomTrainingSample = new();
+        private int _threadsCompleted = 0;
+        private readonly int _threadCount = Environment.ProcessorCount;
+        private List<TrainingSample> _trainingSample = new();
+        private readonly ConcurrentStack<PreparedTrainingSample> _stack = new();
+
+        public int Count => _trainingSample.Count;
+
+        public bool IsComplete => _threadsCompleted == _threadCount;
+
+        public BackgroundLoader(DniNeuralNetwork dni, string path)
         {
             if (dni.OutputLabels == null || dni.OutputLabels.Length == 0)
-                throw new InvalidOperationException("DNI Neural Network must have OutputLabels defined to load training models.");
-
-            var trainingModels = new List<TrainingModel>();
+                throw new InvalidOperationException("DNI Neural Network must have OutputLabels defined to load training sample.");
 
             var imagePaths = Directory.EnumerateFiles(path, "*.png", new EnumerationOptions() { RecurseSubdirectories = true });
 
@@ -30,35 +39,71 @@ namespace TestHarness.Library
                 var fileName = Path.GetFileName(imagePath);
                 //Use the first character of the image filename as the expected output character:
                 var layerExpectation = layerExpectations[fileName[0]];
-                trainingModels.Add(new(imagePath, layerExpectation));
+                _trainingSample.Add(new(imagePath, fileName[0].ToString(), layerExpectation));
             }
-
-            return trainingModels;
         }
 
+        public bool Pop([NotNullWhen(true)] out PreparedTrainingSample? outPrepared)
+        {
+            while (_stack.TryPop(out var prepared) || !IsComplete)
+            {
+                if (prepared == null)
+                {
+                    Thread.Sleep(10);
+                }
+                else
+                {
+                    outPrepared = prepared;
+                    return true;
+                }
+            }
 
-        private static readonly Lock _lockGetRandomTrainingModel = new();
+            outPrepared = null;
+            return false;
+        }
+
+        public void BeginPopulation(int epoch)
+        {
+            for (int i = 0; i < _threadCount; i++)
+            {
+                Task.Run(() =>
+                {
+                    while (TryGetRandomTrainingSample(epoch, out var sample))
+                    {
+                        _stack.Push(new PreparedTrainingSample(sample));
+
+                        while (_stack.Count >= 100)
+                        {
+                            Thread.Sleep(10); // Let the backlog get processed a bit before adding more.
+                        }
+                    }
+
+                    Interlocked.Increment(ref _threadsCompleted);
+                });
+            }
+        }
+
         /// <summary>
         /// Gets a random training model from the list that has not yet been fed-in for the current training epoch.
         /// Increments the training epoch for the random model.
         /// </summary>
-        public static bool TryGetRandomTrainingModel(List<TrainingModel> models, int epoch, [NotNullWhen(true)] out TrainingModel? randomModel)
+        private bool TryGetRandomTrainingSample(int epoch, [NotNullWhen(true)] out TrainingSample? randomSample)
         {
-            lock (_lockGetRandomTrainingModel)
+            lock (_lockGetRandomTrainingSample)
             {
-                var modelsThisEpoch = models.Where(o => o.Epoch == epoch).ToList();
+                var samplesThisEpoch = _trainingSample.Where(o => o.Epoch == epoch).ToList();
 
-                if (modelsThisEpoch.Count == 0)
+                if (samplesThisEpoch.Count == 0)
                 {
-                    randomModel = null;
+                    randomSample = null;
                     return false;
                 }
 
-                int randomIndex = DniUtility.Random.Next(modelsThisEpoch.Count);
-                randomModel = modelsThisEpoch[randomIndex];
+                int randomIndex = DniUtility.Random.Next(samplesThisEpoch.Count);
+                randomSample = samplesThisEpoch[randomIndex];
 
-                //Once we have consumed a model for this epoch, increment its epoch so we don't use it again this epoch:
-                randomModel.Epoch++;
+                //Once we have consumed a sample for this epoch, increment its epoch so we don't use it again this epoch:
+                randomSample.Epoch++;
 
                 return true;
             }

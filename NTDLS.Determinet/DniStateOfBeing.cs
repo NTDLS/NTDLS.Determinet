@@ -27,6 +27,20 @@ namespace NTDLS.Determinet
         /// </summary>
         [ProtoMember(3)] public List<DniSynapse> Synapses { get; internal set; } = new();
 
+        #region Adam (Adaptive Moment Estimation) for batch training.
+
+        //TODO: Serialize these Adam properties because the accumulated gradient statistics are gone when we resume training from a saved state.
+        //This isn't huge, it just means that the very next updates behave like vanilla SGD for a few iterations until it re-adapts.
+        //Unfortunately, ProtoBuf doesn't support serialization of "jagged" arrays.
+
+        public List<double[,]> AdamMeanWeights = new(); // first moment (mean).
+        public List<double[,]> AdamVarianceWeights = new(); // second moment (variance).
+        public List<double[]> AdamMeanBiases = new();
+        public List<double[]> AdamVarianceBiases = new();
+        public long AdamTimeStep = 0; // iteration counter for bias correction.
+
+        #endregion
+
         /// <summary>
         /// Gets or sets the labels associated with the input layer of the model.
         /// </summary>

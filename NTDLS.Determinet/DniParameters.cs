@@ -36,6 +36,13 @@ namespace NTDLS.Determinet
             /// Represents the key used to identify the gradient clipping setting in the network configuration.
             /// </summary>
             public static readonly DniNamedParameter GradientClip = new("Network_GradientClip", typeof(double), 0.5);
+
+            /// <summary>
+            /// Represents a named parameter that specifies whether to enable Adam (Adaptive Moment Estimation) optimization when batch training
+            /// </summary>
+            /// <remarks>This parameter determines if the Adam optimization algorithm should be
+            /// applied to batch processing.  The default value is <see langword="false"/>.</remarks>
+            public static readonly DniNamedParameter UseAdamBatchOptimization = new("Network_UseAdamBatchOptimization", typeof(bool), false);
         }
 
         /// <summary>

@@ -1,0 +1,89 @@
+﻿using NTDLS.Determinet;
+using TestHarness.Library;
+
+namespace TestHarness.Validate
+{
+    internal class Program
+    {
+        static void Main()
+        {
+            var sampleImagePath = "..\\..\\..\\..\\Training Characters";
+            var trainedModelPath = "..\\..\\..\\..\\Trained Models";
+
+            var existing = Path.Combine(trainedModelPath, "CharacterRecognition_Best.dni");
+            if (!File.Exists(existing))
+            {
+                Console.WriteLine($"The trained model file does not exist: {existing}");
+                return;
+            }
+
+            var dni = DniNeuralNetwork.LoadFromFile(existing)
+                ?? throw new Exception("Failed to load the network from file.");
+
+            var backgroundLoader = new BackgroundLoader(dni, sampleImagePath);
+
+            backgroundLoader.BeginPopulation(0);
+
+            double confidenceThreshold = 0.8;
+            double samplesProcessed = 0;
+            double correct = 0;
+            double incorrect = 0;
+            double noConfidence = 0;
+            var confusion = new Dictionary<string, (int correct, int total)>();
+
+            while (backgroundLoader.Pop(out var preparedSample))
+            {
+                dni.Forward(preparedSample.Bits, out var outputLabelValues);
+
+                var expected = preparedSample.Sample.ExpectedValue;
+                var predicted = outputLabelValues.Max();
+
+                if (predicted.Value > confidenceThreshold)
+                {
+                    if (!confusion.ContainsKey(expected))
+                        confusion[expected] = (0, 0);
+
+                    confusion[expected] = (
+                        correct: confusion[expected].correct + (string.Equals(expected, predicted.Key, StringComparison.InvariantCultureIgnoreCase) ? 1 : 0),
+                        total: confusion[expected].total + 1
+                    );
+
+                    if (string.Equals(expected, predicted.Key, StringComparison.InvariantCultureIgnoreCase))
+                    {
+                        correct++;
+                    }
+                    else
+                    {
+                        incorrect++;
+                    }
+                }
+                else
+                {
+                    noConfidence++;
+                }
+
+                samplesProcessed++;
+
+                Console.Write($"{samplesProcessed:n0} of {backgroundLoader.Count:n0} ({((samplesProcessed / backgroundLoader.Count) * 100.0):n2}%)\r");
+            }
+
+            double confidentSamples = correct + incorrect;
+
+            Console.WriteLine("\n=== Validation Summary ===");
+            Console.WriteLine($"Total Samples: {samplesProcessed}");
+            Console.WriteLine($"Correct:       {correct}");
+            Console.WriteLine($"Incorrect:     {incorrect}");
+            Console.WriteLine($"Accuracy:      {(correct / samplesProcessed * 100.0):F2}%");
+            Console.WriteLine($"Accuracy (All):          {(correct / samplesProcessed * 100.0):F2}%");
+            Console.WriteLine($"Accuracy (Confident):    {(confidentSamples > 0 ? correct / confidentSamples * 100.0 : 0):F2}%");
+            Console.WriteLine($"No-Confidence Samples:   {noConfidence} ({noConfidence / samplesProcessed * 100.0:F2}%)");
+
+            // Detailed per-character accuracy:
+            foreach (var kv in confusion.OrderBy(k => k.Key))
+            {
+                double acc = kv.Value.total > 0 ? (double)kv.Value.correct / kv.Value.total * 100.0 : 0;
+                Console.WriteLine($"{kv.Key}: {acc:F1}% ({kv.Value.correct}/{kv.Value.total})");
+            }
+        }
+    }
+}
