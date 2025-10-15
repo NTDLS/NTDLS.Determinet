@@ -181,6 +181,12 @@ namespace NTDLS.Determinet
         /// <returns>An array of output values representing the activations of the final layer of the network.</returns>
         private double[] Forward(double[] inputs, bool isTraining)
         {
+            if(inputs == null)
+                throw new ArgumentNullException(nameof(inputs));
+
+            if(inputs.Length != State.Layers[0].NodeCount)
+                throw new ArgumentException($"Input length {inputs.Length} does not match expected size {State.Layers[0].NodeCount}.", nameof(inputs));
+
             State.Layers[0].Activations = inputs;
 
             for (int i = 1; i < State.Layers.Count; i++)
