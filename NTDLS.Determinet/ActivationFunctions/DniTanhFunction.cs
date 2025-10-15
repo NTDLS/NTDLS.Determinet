@@ -11,15 +11,29 @@ namespace NTDLS.Determinet.ActivationFunctions
     /// network layers. The derivative is used during backpropagation to compute gradients.</remarks>
     public class DniTanhFunction : IDniActivationFunction
     {
+        /// <summary>
+        /// Gets a value indicating whether the cross-entropy method is used in the analysis.
+        /// </summary>
+        public bool UsesCrossEntropy { get; } = false;
+
+        /// <summary>
+        /// Default constructor for the Tanh activation function.
+        /// </summary>
         public DniTanhFunction(DniNamedParameterCollection param)
         {
         }
 
+        /// <summary>
+        /// Applies the activation function to each element in the input array.
+        /// </summary>
         public double[] Activation(double[] nodes)
         {
             return nodes.Select(o => (double)Math.Tanh(o)).ToArray();
         }
 
+        /// <summary>
+        /// Calculates the derivative of the activation function at the specified input value.
+        /// </summary>
         public double Derivative(double x)
         {
             return 1 - (x * x);

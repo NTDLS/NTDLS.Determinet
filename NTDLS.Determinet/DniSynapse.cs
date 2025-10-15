@@ -12,20 +12,36 @@ namespace NTDLS.Determinet
     [ProtoContract]
     public class DniSynapse
     {
-        // Backing data used at runtime (fast access)
+        /// <summary>
+        /// Gets or sets the weight matrix used for calculations or transformations.
+        /// </summary>
+        /// <remarks>The weight matrix is typically used in mathematical or computational operations where
+        /// a two-dimensional structure is required. Ensure that the matrix is properly initialized before use to avoid
+        /// runtime errors.</remarks>
         [ProtoIgnore]
         public double[,] Weights { get; set; }
 
+        /// <summary>
+        /// Gets or sets the number of rows associated with the current instance.
+        /// </summary>
         [ProtoMember(1)]
         public int Rows { get; set; }
 
+        /// <summary>
+        /// Gets or sets the number of columns in the data structure.
+        /// </summary>
         [ProtoMember(2)]
         public int Cols { get; set; }
 
-        // Only used during serialization/deserialization
+        /// <summary>
+        /// Gets or sets the flattened array of weights used for serialization and deserialization.
+        /// </summary>
         [ProtoMember(3)]
         public double[] FlatWeights { get; set; } = Array.Empty<double>();
 
+        /// <summary>
+        /// Gets or sets the bias values used in the computation. 
+        /// </summary>
         [ProtoMember(4)]
         public double[] Biases { get; set; } = Array.Empty<double>();
 
@@ -56,12 +72,28 @@ namespace NTDLS.Determinet
                     Weights[i, j] = FlatWeights[i * Cols + j];
         }
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="DniSynapse"/> class with the specified weights and biases.
+        /// </summary>
+        /// <remarks>The dimensions of the <paramref name="weights"/> and <paramref name="biases"/> arrays
+        /// must align with the structure of the neural network layer that this synapse represents. Ensure that the
+        /// arrays are properly initialized before passing them to this constructor.</remarks>
+        /// <param name="weights">A two-dimensional array representing the weights of the synapse. Each element corresponds to the weight
+        /// between two connected nodes.</param>
+        /// <param name="biases">A one-dimensional array representing the biases of the synapse. Each element corresponds to the bias for a
+        /// specific node.</param>
         public DniSynapse(double[,] weights, double[] biases)
         {
             Weights = weights;
             Biases = biases;
         }
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="DniSynapse"/> class.
+        /// </summary>
+        /// <remarks>This constructor initializes the <see cref="Weights"/> property as an empty
+        /// two-dimensional array  and the <see cref="Biases"/> property as an empty collection. These properties can be
+        /// configured  after instantiation to define the synapse's behavior.</remarks>
         public DniSynapse()
         {
             Weights = new double[0, 0];

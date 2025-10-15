@@ -13,15 +13,33 @@ namespace NTDLS.Determinet.ActivationFunctions
     /// linear transformation is required.</remarks>
     public class DniLinearFunction : IDniActivationFunction
     {
+        /// <summary>
+        /// Gets a value indicating whether the cross-entropy method is used in the analysis.
+        /// </summary>
+        public bool UsesCrossEntropy { get; } = false;
+
+        /// <summary>
+        /// Gets the linear slope value used in calculations.
+        /// </summary>
         public double Alpha { get; private set; } //Linear slope value.
+
+        /// <summary>
+        /// Gets the range of valid DNI values for the operation.
+        /// </summary>
         public DniRange Range { get; private set; } //Function output range.
 
+        /// <summary>
+        /// Default constructor for Linear activation function.
+        /// </summary>
         public DniLinearFunction(DniNamedParameterCollection param)
         {
             Alpha = param.Get<double>(Linear.Alpha);
             Range = param.Get<DniRange>(Linear.Range);
         }
 
+        /// <summary>
+        /// Applies the activation function to each element in the input array.
+        /// </summary>
         public double[] Activation(double[] nodes)
         {
             var result = new List<double>();
@@ -47,6 +65,9 @@ namespace NTDLS.Determinet.ActivationFunctions
             return result.ToArray();
         }
 
+        /// <summary>
+        /// Calculates the derivative of the activation function at the specified input value.
+        /// </summary>
         public double Derivative(double x)
         {
             double y = Alpha * x;

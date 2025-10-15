@@ -18,6 +18,11 @@ namespace NTDLS.Determinet
             MaxDegreeOfParallelism = Environment.ProcessorCount
         };
 
+        /// <summary>
+        /// Gets a thread-safe instance of the <see cref="Random"/> class for generating random numbers.
+        /// </summary>
+        /// <remarks>The instance is lazily initialized and ensures thread safety using a lock.  This
+        /// property provides a shared <see cref="Random"/> instance that can be used across the application.</remarks>
         public static Random Random
         {
             get
@@ -33,6 +38,15 @@ namespace NTDLS.Determinet
             }
         }
 
+        /// <summary>
+        /// Generates a random number following a Gaussian (normal) distribution with the specified mean and standard
+        /// deviation.
+        /// </summary>
+        /// <remarks>This method uses the Box-Muller transform to generate a normally distributed random
+        /// value.</remarks>
+        /// <param name="mean">The mean of the Gaussian distribution. The default value is 0.</param>
+        /// <param name="stdDev">The standard deviation of the Gaussian distribution. Must be greater than 0. The default value is 1.</param>
+        /// <returns>A random double value sampled from the specified Gaussian distribution.</returns>
         public static double NextGaussian(double mean = 0, double stdDev = 1)
         {
             // Use Box-Muller transform to generate a normally distributed value
@@ -42,6 +56,16 @@ namespace NTDLS.Determinet
             return mean + stdDev * randStdNormal; // Scale and shift to desired mean and standard deviation
         }
 
+        /// <summary>
+        /// Finds the index of the maximum value in the specified array of double-precision floating-point numbers.
+        /// </summary>
+        /// <remarks>This method iterates through the array to find the maximum value and its index.  The
+        /// <paramref name="confidence"/> parameter is set to the maximum value found.</remarks>
+        /// <param name="values">The array of double-precision floating-point numbers to search. Must not be null or empty.</param>
+        /// <param name="confidence">When this method returns, contains the maximum value found in the array.  This parameter is passed
+        /// uninitialized.</param>
+        /// <returns>The zero-based index of the maximum value in the array. If the array contains multiple elements with the
+        /// same maximum value,  the index of the first occurrence is returned.</returns>
         public static int IndexOfMaxValue(this double[] values, out double confidence)
         {
             int maxIndex = 0;
@@ -61,6 +85,15 @@ namespace NTDLS.Determinet
             return maxIndex;
         }
 
+        /// <summary>
+        /// Generates a random floating-point number within the specified range.
+        /// </summary>
+        /// <param name="minValue">The inclusive lower bound of the random number to generate.</param>
+        /// <param name="maxValue">The exclusive upper bound of the random number to generate. Must be greater than <paramref
+        /// name="minValue"/>.</param>
+        /// <returns>A random floating-point number greater than or equal to <paramref name="minValue"/> and less than <paramref
+        /// name="maxValue"/>.</returns>
+        /// <exception cref="ArgumentOutOfRangeException">Thrown if <paramref name="maxValue"/> is less than or equal to <paramref name="minValue"/>.</exception>
         public static float NextFloat(float minValue, float maxValue)
         {
             if (maxValue == minValue)
@@ -72,6 +105,15 @@ namespace NTDLS.Determinet
             return (float)(Random.NextDouble() * (maxValue - minValue) + minValue);
         }
 
+        /// <summary>
+        /// Generates a random double-precision floating-point number within the specified range.
+        /// </summary>
+        /// <param name="minValue">The inclusive lower bound of the random number to generate.</param>
+        /// <param name="maxValue">The exclusive upper bound of the random number to generate. Must be greater than <paramref
+        /// name="minValue"/>.</param>
+        /// <returns>A double-precision floating-point number that is greater than or equal to <paramref name="minValue"/>  and
+        /// less than <paramref name="maxValue"/>.</returns>
+        /// <exception cref="ArgumentOutOfRangeException">Thrown if <paramref name="maxValue"/> is less than or equal to <paramref name="minValue"/>.</exception>
         public static double NextDouble(double minValue, double maxValue)
         {
             if (maxValue == minValue)

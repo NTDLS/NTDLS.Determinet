@@ -9,8 +9,6 @@ namespace NTDLS.Determinet.Types
     /// cref="INumber{T}"/> interface. It provides properties to access the minimum and maximum values, as well as
     /// utility methods to calculate the range length and convert the range to an array.</remarks>
     /// <typeparam name="T">The numeric type of the range boundaries. Must implement <see cref="INumber{T}"/>.</typeparam>
-    /// <param name="min"></param>
-    /// <param name="max"></param>
     public struct DniRange<T>
         where T : INumber<T>
     {
@@ -22,12 +20,11 @@ namespace NTDLS.Determinet.Types
         public static readonly DniRange<T> Zero = new(T.Zero, T.Zero);
 
         /// <summary>
-        /// Represents a predefined <see cref="DniRange{T}"/> where both the start and end values are set to <see
-        /// cref="T.One"/>.
+        /// Represents a predefined range where both the start and end values are set to the minimum unit value of the
+        /// type <typeparamref name="T"/>.
         /// </summary>
-        /// <remarks>This static member provides a convenient way to access a range where the start and
-        /// end values are identical and equal to <see cref="T.One"/>. It is commonly used in scenarios where a
-        /// single-value range is required.</remarks>
+        /// <remarks>This static member provides a convenient way to reference a range where the start and
+        /// end are both equal to the unit value of the type.</remarks>
         public static readonly DniRange<T> One = new(T.One, T.One);
 
         /// <summary>

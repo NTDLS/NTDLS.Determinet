@@ -2,6 +2,10 @@
 
 namespace NTDLS.Determinet
 {
+    /// <summary>
+    /// Provides a collection of predefined constants and utilities for configuring neural network parameters,
+    /// activation functions, and layer-specific settings in machine learning applications.
+    /// </summary>
     public static class DniParameters
     {
         /// <summary>

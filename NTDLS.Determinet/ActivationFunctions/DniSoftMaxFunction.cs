@@ -14,6 +14,11 @@ namespace NTDLS.Determinet.ActivationFunctions
     public class DniSoftMaxFunction : IDniActivationFunction
     {
         /// <summary>
+        /// Gets a value indicating whether the cross-entropy method is used in the analysis.
+        /// </summary>
+        public bool UsesCrossEntropy { get; } = true;
+
+        /// <summary>
         /// Temperature scaling factor. 
         /// Higher values soften probabilities; lower values sharpen them.
         /// </summary>
@@ -25,12 +30,18 @@ namespace NTDLS.Determinet.ActivationFunctions
         /// </summary>
         public double MaxLogit { get; private set; }
 
+        /// <summary>
+        /// Default constructor for SoftMax activation function.
+        /// </summary>
         public DniSoftMaxFunction(DniNamedParameterCollection param)
         {
             Temperature = param.Get<double>(SoftMax.Temperature);
             MaxLogit = param.Get<double>(SoftMax.MaxLogit);
         }
 
+        /// <summary>
+        /// Applies the activation function to each element in the input array.
+        /// </summary>
         public double[] Activation(double[] nodes)
         {
             if (nodes.Length == 0)
@@ -64,6 +75,9 @@ namespace NTDLS.Determinet.ActivationFunctions
             return exps;
         }
 
+        /// <summary>
+        /// Calculates the derivative of the activation function at the specified input value.
+        /// </summary>
         public double Derivative(double x)
         {
             // Not used directly; handled by cross-entropy gradient

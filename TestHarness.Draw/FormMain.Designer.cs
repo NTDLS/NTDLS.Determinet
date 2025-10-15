@@ -47,6 +47,8 @@
             textBoxLearningRate = new TextBox();
             labelLoss = new Label();
             textBoxLoss = new TextBox();
+            labelEpoch = new Label();
+            textBoxEpoch = new TextBox();
             ((System.ComponentModel.ISupportInitialize)pictureBoxAiView).BeginInit();
             ((System.ComponentModel.ISupportInitialize)chartPredictions).BeginInit();
             ((System.ComponentModel.ISupportInitialize)trackBarBrushSize).BeginInit();
@@ -82,16 +84,16 @@
             // 
             // textBoxDetected
             // 
-            textBoxDetected.Location = new Point(465, 200);
+            textBoxDetected.Location = new Point(465, 191);
             textBoxDetected.Name = "textBoxDetected";
             textBoxDetected.ReadOnly = true;
-            textBoxDetected.Size = new Size(92, 23);
+            textBoxDetected.Size = new Size(102, 23);
             textBoxDetected.TabIndex = 3;
             // 
             // labelDetected
             // 
             labelDetected.AutoSize = true;
-            labelDetected.Location = new Point(465, 182);
+            labelDetected.Location = new Point(465, 173);
             labelDetected.Name = "labelDetected";
             labelDetected.Size = new Size(54, 15);
             labelDetected.TabIndex = 4;
@@ -120,7 +122,7 @@
             // labelConfidence
             // 
             labelConfidence.AutoSize = true;
-            labelConfidence.Location = new Point(465, 234);
+            labelConfidence.Location = new Point(465, 217);
             labelConfidence.Name = "labelConfidence";
             labelConfidence.Size = new Size(68, 15);
             labelConfidence.TabIndex = 9;
@@ -128,7 +130,7 @@
             // 
             // textBoxConfidence
             // 
-            textBoxConfidence.Location = new Point(465, 252);
+            textBoxConfidence.Location = new Point(465, 235);
             textBoxConfidence.Name = "textBoxConfidence";
             textBoxConfidence.ReadOnly = true;
             textBoxConfidence.Size = new Size(102, 23);
@@ -165,7 +167,7 @@
             trackBarBrushSize.Orientation = Orientation.Vertical;
             trackBarBrushSize.Size = new Size(45, 382);
             trackBarBrushSize.TabIndex = 12;
-            trackBarBrushSize.Value = 25;
+            trackBarBrushSize.Value = 15;
             // 
             // labelBrushSize
             // 
@@ -190,13 +192,13 @@
             textBoxLearningRate.Location = new Point(465, 59);
             textBoxLearningRate.Name = "textBoxLearningRate";
             textBoxLearningRate.ReadOnly = true;
-            textBoxLearningRate.Size = new Size(92, 23);
+            textBoxLearningRate.Size = new Size(102, 23);
             textBoxLearningRate.TabIndex = 14;
             // 
             // labelLoss
             // 
             labelLoss.AutoSize = true;
-            labelLoss.Location = new Point(465, 85);
+            labelLoss.Location = new Point(465, 129);
             labelLoss.Name = "labelLoss";
             labelLoss.Size = new Size(30, 15);
             labelLoss.TabIndex = 17;
@@ -204,17 +206,36 @@
             // 
             // textBoxLoss
             // 
-            textBoxLoss.Location = new Point(465, 103);
+            textBoxLoss.Location = new Point(465, 147);
             textBoxLoss.Name = "textBoxLoss";
             textBoxLoss.ReadOnly = true;
-            textBoxLoss.Size = new Size(92, 23);
+            textBoxLoss.Size = new Size(102, 23);
             textBoxLoss.TabIndex = 16;
+            // 
+            // labelEpoch
+            // 
+            labelEpoch.AutoSize = true;
+            labelEpoch.Location = new Point(465, 85);
+            labelEpoch.Name = "labelEpoch";
+            labelEpoch.Size = new Size(40, 15);
+            labelEpoch.TabIndex = 19;
+            labelEpoch.Text = "Epoch";
+            // 
+            // textBoxEpoch
+            // 
+            textBoxEpoch.Location = new Point(465, 103);
+            textBoxEpoch.Name = "textBoxEpoch";
+            textBoxEpoch.ReadOnly = true;
+            textBoxEpoch.Size = new Size(102, 23);
+            textBoxEpoch.TabIndex = 18;
             // 
             // FormMain
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(820, 436);
+            Controls.Add(labelEpoch);
+            Controls.Add(textBoxEpoch);
             Controls.Add(labelLoss);
             Controls.Add(textBoxLoss);
             Controls.Add(labelLearningRate);
@@ -264,5 +285,7 @@
         private TextBox textBoxLearningRate;
         private Label labelLoss;
         private TextBox textBoxLoss;
+        private Label labelEpoch;
+        private TextBox textBoxEpoch;
     }
 }

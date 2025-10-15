@@ -145,6 +145,9 @@ namespace TestHarness.Train
 
             Console.WriteLine($"Starting backlog threads...");
 
+            //Just for fun, we store the total epochs in the model parameters.
+            var totalEpochs = dni.Parameters.Get<int>("Epochs", 0);
+
             for (int epoch = 0; epoch < _trainingEpochs; epoch++)
             {
                 backgroundLoader.BeginPopulation(epoch);
@@ -156,7 +159,7 @@ namespace TestHarness.Train
 
                 if (epoch == 0)
                 {
-                    Console.WriteLine($"Training with learning Rate: {learningRate:n10}");
+                    Console.WriteLine($"Training with learning Rate: {learningRate:n10} at epoch {totalEpochs:n0}.");
                 }
 
                 while (backgroundLoader.Pop(out var preparedSample))
@@ -179,9 +182,12 @@ namespace TestHarness.Train
 
                 epochLoss /= Math.Max(1, samplesProcessed);
 
-                Console.WriteLine($"Epoch {epoch + 1}/{_trainingEpochs} - Loss: {epochLoss:n8} - Learning Rate: {learningRate:n10}");
+                Console.WriteLine($"Epoch {totalEpochs:n0} - Loss: {epochLoss:n8} - Learning Rate: {learningRate:n8}");
+
+                totalEpochs++;
 
                 dni.Parameters.Set("BatchLoss", epochLoss);
+                dni.Parameters.Set("Epochs", totalEpochs);
 
                 //Save checkpoints.
                 var timestamp = DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss");

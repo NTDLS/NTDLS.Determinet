@@ -17,6 +17,9 @@ namespace NTDLS.Determinet
     [ProtoContract]
     public class DniLayer
     {
+        /// <summary>
+        /// Gets the activation values associated with the current instance.
+        /// </summary>
         public double[] Activations { get; internal set; }
 
         /// <summary>
@@ -83,6 +86,7 @@ namespace NTDLS.Determinet
         /// <param name="nodeCount">The number of nodes (or neurons) in the layer. Must be a positive integer.</param>
         /// <param name="activationType">The activation function type to be used by the layer.</param>
         /// <param name="parameters">A collection of named parameters that configure the layer's behavior. These are also passed to the activation function.</param>
+        /// <param name="labels">An optional array of labels associated with the layer. These are only used if the layer is an input or output layer.</param>
         public DniLayer(DniLayerType layerType, int nodeCount, DniActivationType activationType, DniNamedParameterCollection parameters, string[]? labels)
         {
             Labels = labels;
@@ -102,6 +106,12 @@ namespace NTDLS.Determinet
             }
         }
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="DniLayer"/> class.
+        /// </summary>
+        /// <remarks>This constructor is intended for use during deserialization. It initializes the <see
+        /// cref="Activations"/>  property to an empty array and the <see cref="Parameters"/> property to a new instance
+        /// of a collection.</remarks>
         public DniLayer()
         {
             //Only used for deserialization.
@@ -109,6 +119,13 @@ namespace NTDLS.Determinet
             Parameters = new();
         }
 
+        /// <summary>
+        /// Computes the output activations of the current layer.
+        /// </summary>
+        /// <remarks>If an activation function is defined, it is applied to the current activations. 
+        /// Otherwise, the raw activations are returned.</remarks>
+        /// <returns>An array of double values representing the output activations of the layer. If no activation function is
+        /// defined, the raw activations are returned.</returns>
         public double[] Activate()
         {
             if (ActivationFunction != null)
@@ -118,6 +135,16 @@ namespace NTDLS.Determinet
             return Activations;
         }
 
+        /// <summary>
+        /// Computes the derivative of the activation function for the specified node.
+        /// </summary>
+        /// <remarks>This method relies on the <see cref="ActivationFunction"/> to compute the derivative.
+        /// If the <see cref="ActivationFunction"/> is <c>null</c>, the method directly returns the activation value of
+        /// the specified node.</remarks>
+        /// <param name="nodeIndex">The index of the node for which to compute the derivative. Must be a valid index within the
+        /// <c>Activations</c> collection.</param>
+        /// <returns>The derivative of the activation function for the specified node. If no activation function is set, returns
+        /// the activation value of the node itself.</returns>
         public double ActivateDerivative(int nodeIndex)
         {
             if (ActivationFunction != null)

@@ -1,16 +1,46 @@
 ﻿namespace NTDLS.Determinet.Types
 {
+    /// <summary>
+    /// Specifies the type of layer in a neural network or data processing pipeline.
+    /// </summary>
+    /// <remarks>This enumeration is used to categorize layers based on their role in the processing flow.
+    /// </remarks>
     [Serializable]
     public enum DniLayerType
     {
+        /// <summary>
+        /// Represents an input source or data provider for the application.
+        /// </summary>
+        /// <remarks>This class or member is used to define or interact with input data.  Additional
+        /// details about its purpose or usage should be provided based on the specific context.</remarks>
         Input,
+        /// <summary>
+        /// Represents an intermediate level in a hierarchy or process.
+        /// </summary>
+        /// <remarks>This class or member is intended to be used as a transitional or middle layer within
+        /// a larger system. It may serve as a base for further extension or as a connector between other
+        /// components.</remarks>
         Intermediate,
+        /// <summary>
+        /// Represents the output of an operation or process.
+        /// </summary>
+        /// <remarks>This type or member is used to encapsulate the result or data produced by a specific
+        /// operation. The exact nature of the output depends on the context in which it is used.</remarks>
         Output
     }
 
+    /// <summary>
+    /// Specifies the types of activation functions that can be applied in neural network layers.
+    /// </summary>
+    /// <remarks>Activation functions define the output of a neuron given its input, introducing non-linearity
+    /// to the network. This enumeration provides a variety of activation functions, each suited for different use
+    /// cases, such as classification, regression, or anomaly detection.</remarks>
     [Serializable]
     public enum DniActivationType
     {
+        /// <summary>
+        /// Represents a placeholder or default value indicating the absence of a specific option or selection.
+        /// </summary>
         None,
 
         /// <summary>
@@ -34,7 +64,7 @@
         /// Represents a linear activation function with configurable slope and output range.
         /// </summary>
         /// <remarks>
-        /// This activation function applies a linear transformation to the input values, scaling them by the <see cref="Alpha"/> parameter.
+        /// This activation function applies a linear transformation to the input values, scaling them by the parameter.
         /// The output is clamped to the specified <see cref="Range"/> to ensure it remains within defined bounds.
         /// Commonly used in regression networks or as an output layer for continuous values.
         /// </remarks>
@@ -71,7 +101,7 @@
         /// </summary>
         /// <remarks>
         /// Leaky ReLU allows a small, non-zero gradient for negative input values to avoid “dead neurons.”
-        /// The slope for negative inputs is controlled by the <see cref="Alpha"/> parameter.
+        /// The slope for negative inputs is controlled by the Alpha parameter.
         /// </remarks>
         LeakyReLU,
 

@@ -59,6 +59,7 @@ namespace TestHarness.Draw
                 {
                     textBoxLearningRate.Text = $"{_dni.Parameters.Get<double>(Network.LearningRate):n10}";
                     textBoxLoss.Text = $"{_dni.Parameters.Get<double>("BatchLoss"):n10}";
+                    textBoxEpoch.Text = $"{_dni.Parameters.Get<double>("Epochs"):n0}";
 
                     var outputs = _dni.Forward(inputBits, out var labelValues);
 

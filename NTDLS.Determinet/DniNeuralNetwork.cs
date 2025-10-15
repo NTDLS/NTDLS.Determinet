@@ -27,9 +27,21 @@ namespace NTDLS.Determinet
         /// Gets the collection of named parameters associated with the current state.
         /// </summary>
         public DniNamedParameterCollection Parameters => State.Parameters;
+        /// <summary>
+        /// Gets the collection of layers associated with the current state.
+        /// </summary>
         public List<DniLayer> Layers => State.Layers;
+        /// <summary>
+        /// Gets the collection of synapses associated with the current state.
+        /// </summary>
         public List<DniSynapse> Synapses => State.Synapses;
+        /// <summary>
+        /// Gets the labels associated with the input fields.
+        /// </summary>
         public string[]? InputLabels => State.InputLabels;
+        /// <summary>
+        /// Gets the array of output labels associated with the current state.
+        /// </summary>
         public string[]? OutputLabels => State.OutputLabels;
 
         #endregion
@@ -65,6 +77,11 @@ namespace NTDLS.Determinet
             InitializeWeightsAndBiases();
         }
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="DniNeuralNetwork"/> class.
+        /// </summary>
+        /// <remarks>This constructor is intended for use during deserialization and should not be used
+        /// directly in application code.</remarks>
         public DniNeuralNetwork()
         {
             //Only used for deserialization.
@@ -79,8 +96,7 @@ namespace NTDLS.Determinet
         /// </summary>
         /// <remarks>This method uses the He initialization technique to set the weights to small random
         /// values  based on the size of the current layer. Biases are initialized to random values in the range [-0.5, 0.5].
-        /// The initialized weights and biases are stored in the <see cref="State.Synapses"/>
-        /// collection.</remarks>
+        /// The initialized weights and biases are stored in the collection.</remarks>
         private void InitializeWeightsAndBiases()
         {
             for (int i = 0; i < State.Layers.Count - 1; i++)
@@ -181,10 +197,10 @@ namespace NTDLS.Determinet
         /// <returns>An array of output values representing the activations of the final layer of the network.</returns>
         private double[] Forward(double[] inputs, bool isTraining)
         {
-            if(inputs == null)
+            if (inputs == null)
                 throw new ArgumentNullException(nameof(inputs));
 
-            if(inputs.Length != State.Layers[0].NodeCount)
+            if (inputs.Length != State.Layers[0].NodeCount)
                 throw new ArgumentException($"Input length {inputs.Length} does not match expected size {State.Layers[0].NodeCount}.", nameof(inputs));
 
             State.Layers[0].Activations = inputs;
@@ -214,7 +230,6 @@ namespace NTDLS.Determinet
         /// <remarks>This method applies batch normalization to the input array by adjusting the values to
         /// have a mean of 0 and a standard deviation of 1, followed by optional scaling and shifting.  The
         /// normalization is performed in place, modifying the original array.</remarks>
-        /// <param name="activations">An array of activation values to be normalized. The array is modified in place.</param>
         private static void BatchNormalize(DniLayer layer, bool isTraining)
         {
             if (layer.Gamma == null || layer.Beta == null)
@@ -332,7 +347,8 @@ namespace NTDLS.Determinet
 
             List<double[]>? errors;
 
-            if (State.Layers.Last().ActivationFunction is DniSimpleSoftMaxFunction)
+            //Generally, only SoftMax uses Cross Entropy.
+            if (State.Layers.Last().ActivationFunction?.UsesCrossEntropy == true)
             {
                 var outputError = CrossEntropyLossGradient(State.Layers.Last().Activations, actualOutput);
                 errors = new List<double[]> { outputError };

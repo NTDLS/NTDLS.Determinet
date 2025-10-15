@@ -6,20 +6,20 @@
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <Title>NTDLS.Determinet</Title>
     <Nullable>enable</Nullable>
-    <GenerateDocumentationFile>False</GenerateDocumentationFile>
+    <GenerateDocumentationFile>True</GenerateDocumentationFile>
     <Copyright>Copyright © 2025 NetworkDLS</Copyright>
-    <Description>Determinet is versatile multilayer perception neural network designed for extendibility and genetic-style mutations to allow forward propagation of the network variants.</Description>
+    <Description>Determinet is versatile multilayer perception neural network designed for ease of use and extendibility.</Description>
     <PackageProjectUrl>https://github.com/NTDLS/NTDLS.Determinet</PackageProjectUrl>
     <RepositoryUrl>https://github.com/NTDLS/NTDLS.Determinet</RepositoryUrl>
     <PackageTags>machine-learning;ai;neural-network</PackageTags>
     <PackageReleaseNotes>
-      Dependency updates.
+      Stabilization and additional activation functions/
     </PackageReleaseNotes>
     <RepositoryType>git</RepositoryType>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <Authors>NetworkDLS</Authors>
     <Company>NetworkDLS</Company>
-    <version>1.1.6</version>
+    <version>1.2.0</version>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <IncludeSymbols>True</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>

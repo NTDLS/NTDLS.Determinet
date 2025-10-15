@@ -15,15 +15,33 @@ namespace NTDLS.Determinet.ActivationFunctions
     /// constant outside the range (equal to the slope) and 1 within the range.</remarks>
     public class DniPiecewiseLinearFunction : IDniActivationFunction
     {
+        /// <summary>
+        /// Gets a value indicating whether the cross-entropy method is used in the analysis.
+        /// </summary>
+        public bool UsesCrossEntropy { get; } = false;
+
+        /// <summary>
+        /// Gets the linear slope value used in calculations.
+        /// </summary>
         public double Alpha { get; private set; } //Linear slope value.
+
+        /// <summary>
+        /// Gets the range of valid DNI values for the operation.
+        /// </summary>
         public DniRange Range { get; private set; } //Function output range.
 
+        /// <summary>
+        /// Default constructor for Piecewise Linear activation function.
+        /// </summary>
         public DniPiecewiseLinearFunction(DniNamedParameterCollection param)
         {
             Alpha = param.Get<double>(Piecewise.Alpha);
             Range = param.Get<DniRange>(Piecewise.Range);
         }
 
+        /// <summary>
+        /// Applies the activation function to each element in the input array.
+        /// </summary>
         public double[] Activation(double[] nodes)
         {
             var result = new List<double>();
@@ -41,6 +59,9 @@ namespace NTDLS.Determinet.ActivationFunctions
             return result.ToArray();
         }
 
+        /// <summary>
+        /// Calculates the derivative of the activation function at the specified input value.
+        /// </summary>
         public double Derivative(double x)
         {
             if (x <= Range.Min)

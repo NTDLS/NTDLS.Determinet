@@ -18,6 +18,10 @@ namespace NTDLS.Determinet.Types
         /// calls.</remarks>
         private readonly MemoryCache _cache = new(new MemoryCacheOptions());
 
+        /// <summary>
+        /// Gets the collection of key-value pairs, where the keys are case-insensitive strings, and the values are
+        /// nullable strings.
+        /// </summary>
         [ProtoMember(1)] public Dictionary<string, string?> Values { get; private set; } = new(StringComparer.InvariantCultureIgnoreCase);
 
         /// <summary>
