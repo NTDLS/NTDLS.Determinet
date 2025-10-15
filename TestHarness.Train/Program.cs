@@ -28,6 +28,11 @@ namespace TestHarness.Train
         const double _minLearningRate = 0.000001;
         const double _slop = 0.000000000001;
 
+        static readonly DniRange<int> _angleVariance = new DniRange<int>(-5, 5);
+        static readonly DniRange<int> _shiftVariance = new DniRange<int>(-3, 3);
+        static readonly DniRange<float> _blurVariance = new DniRange<float>(0.5f, 1.5f);
+        static readonly DniRange<double> _scaleVariance = DniRange<double>.One;
+
         static void Main(string[] args)
         {
             //ImageUtility.MoveTenPercent(
@@ -130,7 +135,7 @@ namespace TestHarness.Train
         {
             Console.WriteLine($"Loading image paths...");
             var backgroundLoader = new BackgroundLoader(dni, sampleImagePath,
-                Constants.ImageWidth, Constants.ImageHeight, new DniRange<int>(-5, 5), new DniRange<int>(-3, 3), new DniRange<int>(2, 4), DniRange<double>.One);
+                Constants.ImageWidth, Constants.ImageHeight, _angleVariance, _shiftVariance, _blurVariance, _scaleVariance);
 
             var learningRate = dni.Parameters.Get(Network.LearningRate, _initialLearningRate);
 

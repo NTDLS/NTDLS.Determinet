@@ -30,7 +30,7 @@ namespace TestHarness.Validate
                 ?? throw new Exception("Failed to load the network from file.");
 
             var backgroundLoader = new BackgroundLoader(dni, sampleImagePath,
-                Constants.ImageWidth, Constants.ImageHeight, DniRange<int>.Zero, DniRange<int>.Zero, new DniRange<int>(4, 4), DniRange<double>.One);
+                Constants.ImageWidth, Constants.ImageHeight, DniRange<int>.Zero, DniRange<int>.Zero, new DniRange<float>(0.5f, 0.5f), DniRange<double>.One);
 
             backgroundLoader.BeginPopulation(0);
 

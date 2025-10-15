@@ -17,7 +17,7 @@ namespace TestHarness.Library
         private int _resizeHeight;
         private DniRange<int>? _angleVariance;
         private DniRange<int>? _shiftVariance;
-        private DniRange<int>? _blurVariance;
+        private DniRange<float>? _blurVariance;
         private DniRange<double>? _scaleVariance;
 
         public int Count => _trainingSample.Count;
@@ -25,7 +25,7 @@ namespace TestHarness.Library
         public bool IsComplete => _threadsCompleted == _threadCount;
 
         public BackgroundLoader(DniNeuralNetwork dni, string path, int resizeWidth, int resizeHeight,
-            DniRange<int>? angleVariance, DniRange<int>? shiftVariance, DniRange<int>? blurVariance, DniRange<double>? scaleVariance)
+            DniRange<int>? angleVariance, DniRange<int>? shiftVariance, DniRange<float>? blurVariance, DniRange<double>? scaleVariance)
         {
             _resizeWidth = resizeWidth;
             _resizeHeight = resizeHeight;

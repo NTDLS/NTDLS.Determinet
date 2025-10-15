@@ -61,6 +61,17 @@ namespace NTDLS.Determinet
             return maxIndex;
         }
 
+        public static float NextFloat(float minValue, float maxValue)
+        {
+            if (maxValue == minValue)
+                return maxValue;
+
+            if (maxValue <= minValue)
+                throw new ArgumentOutOfRangeException(nameof(maxValue), "maxValue must be greater than minValue.");
+
+            return (float)(Random.NextDouble() * (maxValue - minValue) + minValue);
+        }
+
         public static double NextDouble(double minValue, double maxValue)
         {
             if (maxValue == minValue)

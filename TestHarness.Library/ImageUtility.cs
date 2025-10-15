@@ -8,15 +8,15 @@ namespace TestHarness.Library
 {
     public class ImageUtility
     {
-        public delegate void PreviewImageHandler(Image<Rgba32> img, int randomAngle, Point randomShift, int randomBlur, Point randomScale);
+        public delegate void PreviewImageHandler(Image<Rgba32> img, int randomAngle, Point randomShift, float randomBlur, Point randomScale);
 
         public static double[]? GetImageGrayscaleBytes(string imagePath, int resizeWidth, int resizeHeight, DniRange<int>? angleVariance,
-            DniRange<int>? shiftVariance, DniRange<int>? blurVariance, DniRange<double>? scaleVariance, PreviewImageHandler? previewImageHandler = null)
+            DniRange<int>? shiftVariance, DniRange<float>? blurVariance, DniRange<double>? scaleVariance, PreviewImageHandler? previewImageHandler = null)
         {
             var imageBytes = File.ReadAllBytes(imagePath);
 
             /*
-            blurVariance = new DniRange<int>(4, 4);
+            blurVariance = new DniRange<float>(0.5f, 1.5f);
             previewImageHandler = ((img, randomAngle, randomShift, randomBlur, randomScale) =>
             {
                 var name = Path.GetFileNameWithoutExtension(imagePath);
@@ -28,7 +28,7 @@ namespace TestHarness.Library
         }
 
         public static double[]? GetImageGrayscaleBytes(byte[] imageBytes, int resizeWidth, int resizeHeight, DniRange<int>? angleVariance,
-            DniRange<int>? shiftVariance, DniRange<int>? blurVariance, DniRange<double>? scaleVariance, PreviewImageHandler? previewImageHandler = null)
+            DniRange<int>? shiftVariance, DniRange<float>? blurVariance, DniRange<double>? scaleVariance, PreviewImageHandler? previewImageHandler = null)
         {
             // Load the image in RGB format and convert to RGBA.
             using var img = Image.Load<Rgba32>(new MemoryStream(imageBytes));
@@ -36,11 +36,11 @@ namespace TestHarness.Library
         }
 
         public static double[]? GetImageGrayscaleBytes(Image<Rgba32> img, int resizeWidth, int resizeHeight, DniRange<int>? angleVariance,
-            DniRange<int>? shiftVariance, DniRange<int>? blurVariance, DniRange<double>? scaleVariance, PreviewImageHandler? previewImageHandler = null)
+            DniRange<int>? shiftVariance, DniRange<float>? blurVariance, DniRange<double>? scaleVariance, PreviewImageHandler? previewImageHandler = null)
         {
             angleVariance ??= new DniRange<int>(0, 0);
             shiftVariance ??= new DniRange<int>(0, 0);
-            blurVariance ??= new DniRange<int>(0, 0);
+            blurVariance ??= new DniRange<float>(0, 0);
             scaleVariance ??= new DniRange<double>(0, 0);
 
             int width = img.Width;
@@ -107,8 +107,6 @@ namespace TestHarness.Library
             int randomAngle = DniUtility.Random.Next(angleVariance.Value.Min, angleVariance.Value.Max);
             using var rotated = squareCanvas.Clone(ctx => ctx.Rotate(randomAngle));
 
-
-
             // flatten the transparency onto a white background
             using var flattened = new Image<Rgba32>(rotated.Width, rotated.Height, Color.White);
             int shiftX = DniUtility.Random.Next(shiftVariance.Value.Min, shiftVariance.Value.Max);
@@ -116,7 +114,7 @@ namespace TestHarness.Library
             //Draw rotated image onto white background with a small random shift in position:
             flattened.Mutate(ctx => ctx.DrawImage(rotated, new Point(shiftX, shiftY), 1f));
 
-            int randomBlur = DniUtility.Random.Next(blurVariance.Value.Min, blurVariance.Value.Max);
+            float randomBlur = DniUtility.NextFloat(blurVariance.Value.Min, blurVariance.Value.Max);
 
             if (randomBlur > 0)
             {
