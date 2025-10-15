@@ -6,7 +6,10 @@ Determinet is versatile multilayer perception neural network designed for ease o
 In addition the the library, you'll find a test harness which includes a character recognition trainer, validator and visual testing tool.
 These provide working examples of training a model as well as generating predictions.
 
+<img width="822" height="468" alt="image" src="https://github.com/user-attachments/assets/da2362b1-73f0-44a6-a169-db525f9c4ab8" />
+
 ## Built-in Activation Functions
+
 | Activation Type                   | What It Does                                                                                      | When To Use It                                                                                                                                                          | Where To Use It                                                             |
 | --------------------------------- | ------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
 | **Identity**                      | Passes values through unchanged. The neuron is basically “transparent.”                           | Use for **pure regression** or as a **linear output layer** when predicting real numbers — e.g., predicting house prices, speed, or temperature.                        | Output                                                                      |
@@ -27,3 +30,4 @@ These provide working examples of training a model as well as generating predict
 | **SoftSign**                      | Smoothly scales inputs as x / (1 +                                                                | Use as a **lightweight, stable alternative** to tanh when you want smooth gradients without exponential cost — good for RNNs or bounded outputs.                        | Hidden                                                                      |
 | **Swish**                         | Smooth, self-gated function (f(x) = x · sigmoid(x)).                                              | Use in **modern deep networks** (CNNs, Transformers, MLPs) where you want ReLU-like performance but with **better gradient flow** and smoother transitions.             | Hidden                                                                      |
 | **SoftPlus**                      | Smooth version of ReLU (f(x) = ln(1 + eˣ)); never zeroes out completely.                          | Use when you want **ReLU-like behavior** but need continuous derivatives — e.g., **probabilistic networks**, VAEs, or any model requiring gradient stability.           | Hidden, sometimes Output (positive-only regression)                         |
+
