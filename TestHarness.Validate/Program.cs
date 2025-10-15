@@ -1,7 +1,5 @@
 ﻿using NTDLS.Determinet;
 using NTDLS.Determinet.Types;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Processing;
 using TestHarness.Library;
 
 namespace TestHarness.Validate
@@ -41,12 +39,19 @@ namespace TestHarness.Validate
             double noConfidence = 0;
             var confusion = new Dictionary<string, (int correct, int total)>();
 
+            double weightedAccuracySum = 0;
+            double weightedConfidenceSum = 0;
+
             while (backgroundLoader.Pop(out var preparedSample))
             {
                 dni.Forward(preparedSample.Bits, out var outputLabelValues);
 
                 var expected = preparedSample.Sample.ExpectedValue;
                 var predicted = outputLabelValues.Max();
+
+                bool isCorrect = string.Equals(expected, predicted.Key, StringComparison.InvariantCultureIgnoreCase);
+                weightedAccuracySum += predicted.Value * (isCorrect ? 1.0 : 0.0);
+                weightedConfidenceSum += predicted.Value;
 
                 if (predicted.Value > confidenceThreshold)
                 {
@@ -77,18 +82,19 @@ namespace TestHarness.Validate
                 Console.Write($"{samplesProcessed:n0} of {backgroundLoader.Count:n0} ({((samplesProcessed / backgroundLoader.Count) * 100.0):n1}%)\r");
             }
 
+            double weightedAccuracy = weightedConfidenceSum > 0 ? weightedAccuracySum / weightedConfidenceSum : 0;
             double confidentSamples = correct + incorrect;
 
             Console.WriteLine("\n=== Validation Summary ===");
-            Console.WriteLine($"Total Samples: {samplesProcessed}");
-            Console.WriteLine($"Correct:       {correct}");
-            Console.WriteLine($"Incorrect:     {incorrect}");
-            Console.WriteLine($"Accuracy:      {(correct / samplesProcessed * 100.0):F2}%");
-            Console.WriteLine($"Accuracy (All):          {(correct / samplesProcessed * 100.0):F2}%");
+            Console.WriteLine($"Total Samples:           {samplesProcessed:n0}");
+            Console.WriteLine($"Correct:                 {correct:n0}");
+            Console.WriteLine($"Incorrect:               {incorrect:n0}");
+            Console.WriteLine($"Accuracy:                {(correct / samplesProcessed * 100.0):F2}%");
             //This tells us how accurate the model is when it is confident in its prediction, this is the number we care about
             //  because it means that when the model is confident, it is usually correct - and it "knows when it doesn't know".
             Console.WriteLine($"Accuracy (Confident):    {(confidentSamples > 0 ? correct / confidentSamples * 100.0 : 0):F2}%");
             Console.WriteLine($"No-Confidence Samples:   {noConfidence} ({noConfidence / samplesProcessed * 100.0:F2}%)");
+            Console.WriteLine($"Weighted Accuracy:       {weightedAccuracy * 100.0:F2}%");
 
             /*
             // Detailed per-character accuracy:
