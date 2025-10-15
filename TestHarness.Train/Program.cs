@@ -180,12 +180,12 @@ namespace TestHarness.Train
 
                 //Save checkpoints.
                 var timestamp = DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss");
-                //dni.SaveToFile(Path.Combine(trainedModelPath, $"CharacterRecognition_{timestamp}_{epochLoss:n8}.dni"));
+                dni.SaveToFile(Path.Combine(trainedModelPath, $"CharacterRecognition_{timestamp}_{epochLoss:n8}.dni"));
 
                 if (epochLoss < bestLoss - _minDelta)
                 {
                     //We save every time we get a new best loss.
-                    //dni.SaveToFile(Path.Combine(trainedModelPath, "CharacterRecognition_Best.dni"));
+                    dni.SaveToFile(Path.Combine(trainedModelPath, "CharacterRecognition_Best.dni"));
 
                     bestLoss = epochLoss;
                     epochsSinceImprovement = 0;
