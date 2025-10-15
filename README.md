@@ -2,8 +2,9 @@
 
 📦 Be sure to check out the NuGet package: https://www.nuget.org/packages/NTDLS.Determinet
 
-Determinet is versatile multilayer perception neural network designed for extendibility. In addition the the library, you'll find a test harness which includes a character recognition trainer, validater and visual tesiting tool.
-These provide working examples of training a model as well as generating predections.
+Determinet is versatile multilayer perception neural network designed for ease of use and extendibility.
+In addition the the library, you'll find a test harness which includes a character recognition trainer, validator and visual testing tool.
+These provide working examples of training a model as well as generating predictions.
 
 <img width="822" height="468" alt="image" src="https://github.com/user-attachments/assets/da2362b1-73f0-44a6-a169-db525f9c4ab8" />
 
