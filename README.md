@@ -2,170 +2,31 @@
 
 📦 Be sure to check out the NuGet package: https://www.nuget.org/packages/NTDLS.Determinet
 
-Determinet is versatile multilayer perception neural network designed for extendibility and genetic-style mutations to allow forward propagation of the network variants.
+Determinet is versatile multilayer perception neural network designed for extendibility. In addition the the library, you'll find a test harness which includes a character recognition trainer, validater and visual tesiting tool.
+These provide working examples of training a model as well as generating predections.
 
-Below is a simple example of using the network to navigate a maze or other obstacles for a simple simulation.
-You can find more advanced examples as well as working models of this in the AIVolution project:
-https://github.com/NTDLS/AIVolution
+<img width="822" height="468" alt="image" src="https://github.com/user-attachments/assets/da2362b1-73f0-44a6-a169-db525f9c4ab8" />
 
-If you are in a fighting mood, you can also battle it out against some of these trained models in the Space Flight Shooter Game: https://github.com/NTDLS/NebulaSiege
+## Built-in Activation Functions
 
-```csharp
-public enum AIInputs
-{
-    DistanceFromObstacle,
-    AngleToObstacleInDecimalDegrees
-}
+| Activation Type                   | What It Does                                                                                      | When To Use It                                                                                                                                                          | Where To Use It                                                             |
+| --------------------------------- | ------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| **Identity**                      | Passes values through unchanged. The neuron is basically “transparent.”                           | Use for **pure regression** or as a **linear output layer** when predicting real numbers — e.g., predicting house prices, speed, or temperature.                        | Output                                                                      |
+| **PiecewiseLinear**               | Acts linear within a range but limits slope outside (like a gentle LeakyReLU with bounds).        | Use when you want **bounded but mostly linear** responses — e.g., controlling actuator strength, image intensity normalization, or testing stable transitions.          | Hidden (sometimes Output for bounded regression)                            |
+| **Linear**                        | Scales input by a slope and optionally clamps to a range.                                         | Great for **controlled continuous outputs** where scaling matters — e.g., steering angle, torque output, or color channel prediction.                                   | Output (regression), Hidden (feature scaling)                               |
+| **ReLU (Rectified Linear Unit)**  | Keeps positive values, zeros out negatives. Very fast and stable.                                 | The **default** for most deep learning tasks. Ideal for **vision models, embeddings, and dense MLPs** — e.g., image recognition, feature extraction, signal processing. | Hidden                                                                      |
+| **Sigmoid**                       | Squashes output between 0 and 1 (probability curve).                                              | Use for **binary classification** (“yes/no,” “on/off,” “spam/not spam”) or when modeling **probability per neuron** in multi-label tasks.                               | Output (binary classification), Hidden (gating in LSTMs or attention)       |
+| **Tanh**                          | Squashes output between -1 and 1, centered around 0.                                              | Use when values can be **positive or negative** and symmetry matters — e.g., **RNNs**, control systems, or **directional outputs** (-1 left, +1 right).                 | Hidden                                                                      |
+| **LeakyReLU**                     | Like ReLU, but negative values leak through slightly instead of being zeroed.                     | Use in **deep MLPs** to avoid “dead neurons” and keep gradients flowing — especially in **dense** or **deep** architectures.                                            | Hidden                                                                      |
+| **SoftMax**                       | Converts outputs into a probability distribution that sums to 1.                                  | Use for **multi-class classification** — e.g., recognizing characters, digits, objects, or anything where exactly one class is correct.                                 | Output                                                                      |
+| **SimpleSoftMax**                 | A simplified SoftMax (no temperature scaling).                                                    | Use when you need **fast, stable classification** and temperature tuning isn’t required. Works the same for most classification tasks.                                  | Output                                                                      |
+| **ELU (Exponential Linear Unit)** | Works like ReLU for positive inputs but smoothly bends for negatives instead of dropping to zero. | Use when you want **ReLU-like behavior** but prefer smoother gradients and **mean activations closer to zero** — e.g., deep networks prone to “dead neurons.”           | Hidden                                                                      |
+| **Gaussian (RBF)**                | Outputs a bell curve centered around zero (f(x) = e<sup>-x²</sup>).                               | Use for **radial basis networks**, **feature clustering**, or **anomaly detection** where proximity to a center value matters.                                          | Hidden                                                                      |
+| **HardSigmoid**                   | A linear, fast approximation of the sigmoid function.                                             | Use in **lightweight models** or embedded systems where performance matters, or when full sigmoid precision isn’t required.                                             | Hidden, Output (binary)                                                     |
+| **HardTanh**                      | Like Tanh but clipped to the range [-1, 1] using straight lines.                                  | Use when you need **bounded outputs** but want faster computation — e.g., control tasks, quantized models, or when smoothness isn’t critical.                           | Hidden                                                                      |
+| **Mish**                          | Smoothly blends ReLU and Swish behavior (f(x) = x·tanh(ln(1+eˣ))).                                | Use when you want **smoother gradients** and slightly better **generalization** in deep MLPs or CNNs — can outperform ReLU/Swish on some tasks.                         | Hidden                                                                      |
+| **SELU (Scaled ELU)**             | A self-normalizing version of ELU that keeps activations around mean=0, var=1.                    | Use in **deep fully-connected networks** without batch normalization; helps stabilize training automatically.                                                           | Hidden                                                                      |
+| **SoftSign**                      | Smoothly scales inputs as x / (1 +                                                                | Use as a **lightweight, stable alternative** to tanh when you want smooth gradients without exponential cost — good for RNNs or bounded outputs.                        | Hidden                                                                      |
+| **Swish**                         | Smooth, self-gated function (f(x) = x · sigmoid(x)).                                              | Use in **modern deep networks** (CNNs, Transformers, MLPs) where you want ReLU-like performance but with **better gradient flow** and smoother transitions.             | Hidden                                                                      |
+| **SoftPlus**                      | Smooth version of ReLU (f(x) = ln(1 + eˣ)); never zeroes out completely.                          | Use when you want **ReLU-like behavior** but need continuous derivatives — e.g., **probabilistic networks**, VAEs, or any model requiring gradient stability.           | Hidden, sometimes Output (positive-only regression)                         |
 
-public enum AIOutputs
-{
-    MoveAway,
-    AdjustSpeed
-}
-
-static void Main()
-{
-    TrainAndSaveModel("./TestHarness.json");
-
-    //Note that if you want to use the model in different threads, you will need to
-    //  make a clone since the values of the input nodes are altered when making decisions.
-    //  Fortunately, this can be easily accomplished with a call to Clone();
-    var network = LoadSavedModel("./TestHarness.json");
-
-    var decidingFactors = GatherInputs(); //Get decision inputs.
-
-    var decisions = network.FeedForward(decidingFactors); //Make decisions.
-
-    //Handle the speed decisions.
-    var shouldAdjustSpeed = decisions.Get(AIOutputs.AdjustSpeed);
-    if (shouldAdjustSpeed > 0.8)
-    {
-        //Adjust speed up.
-    }
-    else if (shouldAdjustSpeed < 0.2)
-    {
-        //Adjust speed down.
-    }
-
-    //Handle the heading direction.
-    var shouldMoveAway = decisions.Get(AIOutputs.MoveAway);
-    if (shouldMoveAway > 0.9)
-    {
-        //Change heading. Maybe just turn around completely?
-    }
-}
-
-/// <summary>
-/// Get the input values we need to make a decision.
-/// </summary>
-/// <returns></returns>
-static DniNamedInterfaceParameters GatherInputs()
-{
-    //Here we are just using some dummy values, in this hypothetical situation
-    //  we would be getting the distance from a wall and the angle to it.
-
-    double idealMaxDistance = 1000;
-    double distanceFromObstacle = 500;
-
-    double percentageOfCloseness = (distanceFromObstacle / idealMaxDistance);
-    double angleToObstacleInDecimalDegrees = 0.8;
-
-    var aiParams = new DniNamedInterfaceParameters();
-    aiParams.Set(AIInputs.DistanceFromObstacle, percentageOfCloseness);
-    aiParams.Set(AIInputs.AngleToObstacleInDecimalDegrees, angleToObstacleInDecimalDegrees);
-    return aiParams;
-}
-
-static DniNeuralNetwork LoadSavedModel(string fileName)
-{
-    var network = DniNeuralNetwork.LoadFromFile(fileName);
-
-    if (network == null)
-    {
-        throw new Exception("Failed to load the network from file.");
-    }
-
-    return network;
-}
-
-static void TrainAndSaveModel(string fileName)
-{
-    var Network = new DniNeuralNetwork
-    {
-        LearningRate = 0.01
-    };
-
-    //Add input layer
-    Network.Layers.AddInput(ActivationType.LeakyReLU,
-        new object[] {
-                AIInputs.DistanceFromObstacle,
-                AIInputs.AngleToObstacleInDecimalDegrees
-        });
-
-    //Add a intermediate "hidden" layer. You can add more if you like.
-    Network.Layers.AddIntermediate(ActivationType.Sigmoid, 8);
-
-    //Add the output layer.
-    Network.Layers.AddOutput(
-        new object[] {
-                AIOutputs.MoveAway,
-                AIOutputs.AdjustSpeed
-        });
-
-    //Train the model with some input scenarios. Look at TrainingScenario() and TrainingDecision()
-    //  to see that these ominous looking numbers are actualy just named inouts. Its pretty simple really.
-    for (int epoch = 0; epoch < 5000; epoch++)
-    {
-        //Very close to observed object, slow way down and get away
-        Network.BackPropagate(TrainingScenario(0, 0), TrainingDecision(1, 0));
-        Network.BackPropagate(TrainingScenario(0, -1), TrainingDecision(1, 0));
-        Network.BackPropagate(TrainingScenario(0, 1), TrainingDecision(1, 0));
-        Network.BackPropagate(TrainingScenario(0, 0.5), TrainingDecision(1, 0));
-        Network.BackPropagate(TrainingScenario(0, -0.5), TrainingDecision(1, 0));
-
-        //Pretty close to observed object, slow down a bit and get away.
-        Network.BackPropagate(TrainingScenario(0.25, 0), TrainingDecision(1, 0.2));
-        Network.BackPropagate(TrainingScenario(0.25, -1), TrainingDecision(1, 0.2));
-        Network.BackPropagate(TrainingScenario(0.25, 1), TrainingDecision(1, 0.2));
-        Network.BackPropagate(TrainingScenario(0.25, 0.5), TrainingDecision(1, 0.2));
-        Network.BackPropagate(TrainingScenario(0.25, -0.5), TrainingDecision(1, 0.2));
-
-        //Very far from observed object, speed up and maintain heading.
-        Network.BackPropagate(TrainingScenario(1, 0), TrainingDecision(0, 1));
-        Network.BackPropagate(TrainingScenario(1, -1), TrainingDecision(0, 1));
-        Network.BackPropagate(TrainingScenario(1, 1), TrainingDecision(0, 1));
-        Network.BackPropagate(TrainingScenario(1, 0.5), TrainingDecision(0, 1));
-        Network.BackPropagate(TrainingScenario(1, -0.5), TrainingDecision(0, 1));
-
-        //Pretty far from observed object, maintain heading but don't change speed.
-        Network.BackPropagate(TrainingScenario(0.75, 0), TrainingDecision(0, 0.5));
-        Network.BackPropagate(TrainingScenario(0.75, -1), TrainingDecision(0, 0.5));
-        Network.BackPropagate(TrainingScenario(0.75, 1), TrainingDecision(0, 0.5));
-        Network.BackPropagate(TrainingScenario(0.75, 0.5), TrainingDecision(0, 0.5));
-        Network.BackPropagate(TrainingScenario(0.75, -0.5), TrainingDecision(0, 0.5));
-    }
-
-    static DniNamedInterfaceParameters TrainingScenario(double distanceFromObstacle, double angleToObstacleInDecimalDegrees)
-    {
-        var param = new DniNamedInterfaceParameters();
-        param.Set(AIInputs.DistanceFromObstacle, distanceFromObstacle);
-        param.Set(AIInputs.AngleToObstacleInDecimalDegrees, angleToObstacleInDecimalDegrees);
-        return param;
-    }
-
-    static DniNamedInterfaceParameters TrainingDecision(double moveAway, double adjustSpeed)
-    {
-        var param = new DniNamedInterfaceParameters();
-
-        param.Set(AIOutputs.MoveAway, moveAway);
-        param.Set(AIOutputs.AdjustSpeed, adjustSpeed);
-        return param;
-    }
-
-    //Save the network to a file. This is only done here for examples sake.
-    Network.Save(fileName);
-}
-```
-
-## License
-[MIT](https://choosealicense.com/licenses/mit/)
