@@ -8,6 +8,7 @@ namespace TestHarness.Train
     internal class Program
     {
         const string sampleImagePath = "..\\..\\..\\..\\Sample Images\\Training";
+        //const string sampleImagePath = @"C:\NTDLS\NTDLS.Determinet\Sample Images\Test";
 
         private static readonly char[] _networkOutputLabels = [
                 '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
@@ -29,6 +30,11 @@ namespace TestHarness.Train
 
         static void Main(string[] args)
         {
+            //ImageUtility.MoveTenPercent(
+
+            //ImageUtility.ResizeAllImagesRecursive("C:\\NTDLS\\NTDLS.Determinet\\Sample Images\\Training\\Kaggle");
+            //ImageUtility.MoveTenPercent("C:\\NTDLS\\NTDLS.Determinet\\Sample Images\\Training", "C:\\NTDLS\\NTDLS.Determinet\\Sample Images\\Validation");
+
             var trainedModelPath = "..\\..\\..\\..\\Trained Models";
 
             DniNeuralNetwork dni;
@@ -124,7 +130,7 @@ namespace TestHarness.Train
         {
             Console.WriteLine($"Loading image paths...");
             var backgroundLoader = new BackgroundLoader(dni, sampleImagePath,
-                Constants.ImageWidth, Constants.ImageHeight, new DniRange<int>(-5, 5), new DniRange<int>(-3, 3), new DniRange<int>(1, 4), DniRange<double>.One);
+                Constants.ImageWidth, Constants.ImageHeight, new DniRange<int>(-5, 5), new DniRange<int>(-3, 3), new DniRange<int>(2, 4), DniRange<double>.One);
 
             var learningRate = dni.Parameters.Get(Network.LearningRate, _initialLearningRate);
 
@@ -174,12 +180,12 @@ namespace TestHarness.Train
 
                 //Save checkpoints.
                 var timestamp = DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss");
-                dni.SaveToFile(Path.Combine(trainedModelPath, $"CharacterRecognition_{timestamp}_{epochLoss:n8}.dni"));
+                //dni.SaveToFile(Path.Combine(trainedModelPath, $"CharacterRecognition_{timestamp}_{epochLoss:n8}.dni"));
 
                 if (epochLoss < bestLoss - _minDelta)
                 {
                     //We save every time we get a new best loss.
-                    dni.SaveToFile(Path.Combine(trainedModelPath, "CharacterRecognition_Best.dni"));
+                    //dni.SaveToFile(Path.Combine(trainedModelPath, "CharacterRecognition_Best.dni"));
 
                     bestLoss = epochLoss;
                     epochsSinceImprovement = 0;

@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="NTDLS.DelegateThreadPooling" Version="2.0.1" />
+    <PackageReference Include="NTDLS.DelegateThreadPooling" Version="2.0.2" />
   </ItemGroup>
 
   <ItemGroup>

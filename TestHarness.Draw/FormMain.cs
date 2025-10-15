@@ -47,7 +47,7 @@ namespace TestHarness.Draw
             var image = ConvertBitmapToImageSharp(bitmap);
 
             var inputBits = ImageUtility.GetImageGrayscaleBytes(image, Constants.ImageWidth, Constants.ImageHeight, DniRange<int>.Zero, DniRange<int>.Zero, new DniRange<int>(1, 4), DniRange<double>.One,
-                (img) =>
+                (img, randomAngle, randomShift, randomBlur, randomScale) =>
                 {
                     var previewBmp = ToBitmap(img);
                     pictureBoxAiView.Image = previewBmp;

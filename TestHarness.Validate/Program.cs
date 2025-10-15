@@ -1,5 +1,7 @@
 ﻿using NTDLS.Determinet;
 using NTDLS.Determinet.Types;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Processing;
 using TestHarness.Library;
 
 namespace TestHarness.Validate
@@ -88,6 +90,7 @@ namespace TestHarness.Validate
             Console.WriteLine($"Accuracy (Confident):    {(confidentSamples > 0 ? correct / confidentSamples * 100.0 : 0):F2}%");
             Console.WriteLine($"No-Confidence Samples:   {noConfidence} ({noConfidence / samplesProcessed * 100.0:F2}%)");
 
+            /*
             // Detailed per-character accuracy:
             Console.WriteLine("\n=== Per-Character Accuracy ===");
             foreach (var kv in confusion.OrderBy(k => k.Key))
@@ -95,9 +98,10 @@ namespace TestHarness.Validate
                 double acc = kv.Value.total > 0 ? (double)kv.Value.correct / kv.Value.total * 100.0 : 0;
                 Console.WriteLine($"{kv.Key}: {acc:F1}% ({kv.Value.correct}/{kv.Value.total})");
             }
+            */
 
-            Console.WriteLine("Press Enter to exit.");
-            Console.ReadLine();
+            //Console.WriteLine("Press Enter to exit.");
+            //Console.ReadLine();
         }
     }
 }
