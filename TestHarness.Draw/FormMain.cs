@@ -32,7 +32,7 @@ namespace TestHarness.Draw
 
             simpleDrawControl.SetParent(this);
 
-            var debugModelFile = @"..\..\..\..\Trained Models\CharacterRecognition_Best.dni";
+            var debugModelFile = @"CharacterRecognition_Best.dni";
             if (File.Exists(debugModelFile))
             {
                 LoadModelFromFile(debugModelFile);
