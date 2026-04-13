@@ -23,6 +23,12 @@ namespace NTDLS.Determinet
         public double[] Activations { get; internal set; }
 
         /// <summary>
+        /// Gets the pre-activation values (after weighted sum and batch normalization, but before the activation function).
+        /// Used by backpropagation to compute correct activation derivatives.
+        /// </summary>
+        public double[] PreActivations { get; internal set; }
+
+        /// <summary>
         /// Object instance of the activation function for this layer.
         /// Set by InstantiateActivationFunction() method.
         /// </summary>
@@ -95,6 +101,7 @@ namespace NTDLS.Determinet
             NodeCount = nodeCount;
             ActivationType = activationType;
             Activations = new double[nodeCount];
+            PreActivations = new double[nodeCount];
             InstantiateActivationFunction();
 
             if (Parameters.Get(Layer.UseBatchNorm, false))
@@ -116,6 +123,7 @@ namespace NTDLS.Determinet
         {
             //Only used for deserialization.
             Activations = Array.Empty<double>();
+            PreActivations = Array.Empty<double>();
             Parameters = new();
         }
 
@@ -149,9 +157,9 @@ namespace NTDLS.Determinet
         {
             if (ActivationFunction != null)
             {
-                return ActivationFunction.Derivative(Activations[nodeIndex]);
+                return ActivationFunction.Derivative(PreActivations[nodeIndex]);
             }
-            return Activations[nodeIndex];
+            return PreActivations[nodeIndex];
         }
 
         internal void InstantiateActivationFunction()

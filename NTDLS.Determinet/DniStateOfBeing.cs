@@ -79,13 +79,13 @@ namespace NTDLS.Determinet
         {
             get
             {
-                var layer = Layers.Last()
+                var layer = Layers.First()
                     ?? throw new Exception("Input layer is not defined.");
                 return layer.Labels;
             }
             set
             {
-                var layer = Layers.Last()
+                var layer = Layers.First()
                     ?? throw new Exception("Input layer is not defined.");
 
                 if (value != null && value.Length != layer.NodeCount)

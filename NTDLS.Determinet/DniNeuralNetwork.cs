@@ -217,6 +217,10 @@ namespace NTDLS.Determinet
                     BatchNormalize(layer, isTraining);
                 }
 
+                // Capture pre-activation values before the nonlinear activation function.
+                // Backpropagation uses these to compute correct activation derivatives.
+                layer.PreActivations = layer.Activations;
+
                 // Nonlinear activation
                 layer.Activations = layer.Activate();
             }
@@ -759,7 +763,7 @@ namespace NTDLS.Determinet
             var predicted = Forward(inputs, true);
 
             List<double[]> errors;
-            if (State.Layers.Last().ActivationFunction is DniSimpleSoftMaxFunction)
+            if (State.Layers.Last().ActivationFunction?.UsesCrossEntropy == true)
             {
                 errors = new() { CrossEntropyLossGradient(predicted, expected) };
             }

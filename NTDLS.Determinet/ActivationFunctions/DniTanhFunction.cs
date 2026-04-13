@@ -36,7 +36,8 @@ namespace NTDLS.Determinet.ActivationFunctions
         /// </summary>
         public double Derivative(double x)
         {
-            return 1 - (x * x);
+            double t = Math.Tanh(x);
+            return 1 - t * t;
         }
     }
 }
