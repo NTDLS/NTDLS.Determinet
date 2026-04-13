@@ -139,7 +139,9 @@ namespace TestHarness.Train
 
             var learningRate = dni.Parameters.Get(Network.LearningRate, _initialLearningRate);
 
-            double bestLoss = double.MaxValue;
+            // When resuming from a saved model, seed bestLoss from the stored value so we
+            // don't immediately overwrite the best checkpoint with a potentially worse epoch.
+            double bestLoss = dni.Parameters.Get("BatchLoss", double.MaxValue);
             int epochsSinceImprovement = 0;
             int cooldownCounter = _cooldown;
 
@@ -219,6 +221,7 @@ namespace TestHarness.Train
                         var newLR = learningRate * _decayFactor;
                         learningRate = Math.Max(_minLearningRate, newLR);
                         cooldownCounter = _cooldown;
+                        epochsSinceImprovement = 0; // give the network a fresh window at the new LR
                         Console.WriteLine($"[LR Scheduler] Plateau (best={bestLoss:n4}, current={epochLoss:n4}). Reducing LR -> {learningRate:n6}");
                     }
                 }
