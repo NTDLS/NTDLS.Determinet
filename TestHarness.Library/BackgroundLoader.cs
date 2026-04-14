@@ -11,6 +11,7 @@ namespace TestHarness.Library
         private int _threadsCompleted = 0;
         private readonly int _threadCount = Environment.ProcessorCount;
         private List<TrainingSample> _trainingSample = new();
+        private Queue<TrainingSample> _epochQueue = new(); // shuffled queue for the current epoch
         private readonly ConcurrentStack<PreparedTrainingSample> _stack = new();
 
         private int _resizeWidth;
@@ -80,6 +81,14 @@ namespace TestHarness.Library
 
         public void BeginPopulation(int epoch)
         {
+            // Shuffle all samples once at the start of the epoch so TryGetRandomTrainingSample
+            // can pop O(1) rather than scanning the full list on every call.
+            lock (_lockGetRandomTrainingSample)
+            {
+                _epochQueue = new Queue<TrainingSample>(
+                    _trainingSample.OrderBy(_ => DniUtility.Random.Next()));
+            }
+
             _threadsCompleted = 0;
             for (int i = 0; i < _threadCount; i++)
             {
@@ -105,27 +114,20 @@ namespace TestHarness.Library
         }
 
         /// <summary>
-        /// Gets a random training model from the list that has not yet been fed-in for the current training epoch.
-        /// Increments the training epoch for the random model.
+        /// Returns the next training sample for this epoch from the pre-shuffled queue.
+        /// O(1) per call instead of O(N) scan.
         /// </summary>
         private bool TryGetRandomTrainingSample(int epoch, [NotNullWhen(true)] out TrainingSample? randomSample)
         {
             lock (_lockGetRandomTrainingSample)
             {
-                var samplesThisEpoch = _trainingSample.Where(o => o.Epoch == epoch).ToList();
-
-                if (samplesThisEpoch.Count == 0)
+                if (_epochQueue.Count == 0)
                 {
                     randomSample = null;
                     return false;
                 }
 
-                int randomIndex = DniUtility.Random.Next(samplesThisEpoch.Count);
-                randomSample = samplesThisEpoch[randomIndex];
-
-                //Once we have consumed a sample for this epoch, increment its epoch so we don't use it again this epoch:
-                randomSample.Epoch++;
-
+                randomSample = _epochQueue.Dequeue();
                 return true;
             }
         }

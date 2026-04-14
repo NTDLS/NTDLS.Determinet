@@ -61,8 +61,8 @@ namespace TestHarness.Train
                 | Layer    | Role                                     | Notes                                                                              |
                 | -------- | ---------------------------------------- | ---------------------------------------------------------------------------------- |
                 | Input    | `_imageWidth * _imageHeight` (130x130)   | Flattened grayscale image. Normalize pixel values to [0, 1] or z-score per sample. |
-                | Hidden 1 | 512 → LeakyReLU                          | Enough capacity to learn non-linear stroke patterns.                               |
-                | Hidden 2 | 256 → LeakyReLU                          | Tapering keeps parameter count reasonable; aids generalization.                    |
+                | Hidden 1 | 2048 → LeakyReLU                         | Enough capacity to learn non-linear stroke patterns.                               |
+                | Hidden 2 | 512 → LeakyReLU                          | Tapering keeps parameter count reasonable; aids generalization.                    |
                 | Hidden 3 | 128 → LeakyReLU                          | Distills features before classification.                                           |
                 | Output   | 62 → Softmax                             | One neuron per symbol (0-9, A-Z, a-z).                                             |
                 */
@@ -74,9 +74,8 @@ namespace TestHarness.Train
                 //leakyReLUParam.Set(Layer.BatchNormMomentum, 0.9);
 
                 //MLPs: 2–3 hidden layers, 128–512 units each, tapering (512, 256, 128).
-                configuration.AddIntermediateLayer(768, DniActivationType.LeakyReLU);
+                configuration.AddIntermediateLayer(2048, DniActivationType.LeakyReLU);
                 configuration.AddIntermediateLayer(512, DniActivationType.LeakyReLU, leakyReLUParam);
-                configuration.AddIntermediateLayer(256, DniActivationType.LeakyReLU);
                 configuration.AddIntermediateLayer(128, DniActivationType.LeakyReLU);
 
                 /*//Example of adding parameters for a layer activation function:
@@ -139,7 +138,9 @@ namespace TestHarness.Train
 
             var learningRate = dni.Parameters.Get(Network.LearningRate, _initialLearningRate);
 
-            double bestLoss = double.MaxValue;
+            // When resuming from a saved model, seed bestLoss from the stored value so we
+            // don't immediately overwrite the best checkpoint with a potentially worse epoch.
+            double bestLoss = dni.Parameters.Get("BatchLoss", double.MaxValue);
             int epochsSinceImprovement = 0;
             int cooldownCounter = _cooldown;
 
@@ -219,6 +220,7 @@ namespace TestHarness.Train
                         var newLR = learningRate * _decayFactor;
                         learningRate = Math.Max(_minLearningRate, newLR);
                         cooldownCounter = _cooldown;
+                        epochsSinceImprovement = 0; // give the network a fresh window at the new LR
                         Console.WriteLine($"[LR Scheduler] Plateau (best={bestLoss:n4}, current={epochLoss:n4}). Reducing LR -> {learningRate:n6}");
                     }
                 }
