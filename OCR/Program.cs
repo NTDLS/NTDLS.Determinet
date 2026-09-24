@@ -1,7 +1,5 @@
-﻿using NTDLS.Determinet;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
-using SixLabors.ImageSharp.Processing;
+using ImageMagick;
+using NTDLS.Determinet;
 
 namespace OCR
 {
@@ -34,34 +32,30 @@ namespace OCR
                 ?? throw new Exception("Failed to load the network from file.");
 
             var inputPath = "C:\\NTDLS\\NTDLS.Determinet\\OCR\\screenshot.png";
-            using var image = Image.Load<Rgba32>(inputPath);
+            using var image = new MagickImage(inputPath);
 
-            // Convert to grayscale
-            image.Mutate(x => x.Grayscale());
+            // Binarize (black text, white background): grayscale, then anything below 80% brightness becomes black.
+            image.BackgroundColor = MagickColors.White;
+            image.Alpha(AlphaOption.Remove);
+            image.Grayscale();
+            image.Threshold(new Percentage(80));
 
-            // Binarize (black text, white background)
-            float threshold = 0.8f;
-            for (int y = 0; y < image.Height; y++)
-            {
-                for (int x = 0; x < image.Width; x++)
-                {
-                    var pixel = image[x, y];
-                    float brightness = pixel.R / 255f;
-                    image[x, y] = brightness < threshold ? Color.Black : Color.White;
-                }
-            }
+            int imageWidth = (int)image.Width;
+            int imageHeight = (int)image.Height;
+            var gray = ReadGray(image);
+            bool IsInk(int x, int y) => gray[y * imageWidth + x] < 128;
 
             // --- STEP 1: Find horizontal line segments ---
             var lineBounds = new List<(int Y, int Height)>();
             bool inLine = false;
             int startY = 0;
 
-            for (int y = 0; y < image.Height; y++)
+            for (int y = 0; y < imageHeight; y++)
             {
                 bool hasBlackPixel = false;
-                for (int x = 0; x < image.Width; x++)
+                for (int x = 0; x < imageWidth; x++)
                 {
-                    if (image[x, y].R < 128)
+                    if (IsInk(x, y))
                     {
                         hasBlackPixel = true;
                         break;
@@ -82,26 +76,24 @@ namespace OCR
             }
 
             if (inLine)
-                lineBounds.Add((startY, image.Height - startY));
+                lineBounds.Add((startY, imageHeight - startY));
 
             Directory.CreateDirectory("chars");
 
             int lineIndex = 0;
             foreach (var (y, height) in lineBounds)
             {
-                using var lineImg = image.Clone(ctx => ctx.Crop(new Rectangle(0, y, image.Width, height)));
-
                 // --- STEP 2: Find character segments within the line ---
                 var charBounds = new List<(int X, int Width)>();
                 bool inChar = false;
                 int startX = 0;
 
-                for (int x = 0; x < lineImg.Width; x++)
+                for (int x = 0; x < imageWidth; x++)
                 {
                     bool hasBlackPixel = false;
-                    for (int yy = 0; yy < lineImg.Height; yy++)
+                    for (int yy = y; yy < y + height; yy++)
                     {
-                        if (lineImg[x, yy].R < 128)
+                        if (IsInk(x, yy))
                         {
                             hasBlackPixel = true;
                             break;
@@ -121,14 +113,13 @@ namespace OCR
                     }
                 }
                 if (inChar)
-                    charBounds.Add((startX, lineImg.Width - startX));
+                    charBounds.Add((startX, imageWidth - startX));
 
                 int charIndex = 0;
                 foreach (var (x, width) in charBounds)
                 {
-                    var rect = new Rectangle(x, 0, width, lineImg.Height);
-                    using var charImg = lineImg.Clone(ctx => ctx.Crop(rect));
-                    //charImg.Save($"C:\\NTDLS\\NTDLS.Determinet\\OCR\\debug_out\\line{lineIndex:00}_char{charIndex:000}.png");
+                    using var charImg = image.CloneArea(new MagickGeometry(x, y, (uint)width, (uint)height));
+                    //charImg.Write($"C:\\NTDLS\\NTDLS.Determinet\\OCR\\debug_out\\line{lineIndex:00}_char{charIndex:000}.png");
 
                     var inputBits = GetImageGrayscaleBytes(charImg, _imageWidth, _imageHeight);
 
@@ -156,33 +147,29 @@ namespace OCR
 
         static int dbgIndex = 0;
 
-        private static double[]? GetImageGrayscaleBytes(Image<Rgba32> img, int resizeWidth, int resizeHeight)
+        private static double[]? GetImageGrayscaleBytes(IMagickImage<byte> img, int resizeWidth, int resizeHeight)
         {
-            int width = img.Width;
-            int height = img.Height;
+            int width = (int)img.Width;
+            int height = (int)img.Height;
 
             // Detect bounds of non-white pixels
             int threshold = 250;
             int left = width, right = 0, top = height, bottom = 0;
 
-            img.ProcessPixelRows(accessor =>
+            var gray = ReadGray(img);
+            for (int y = 0; y < height; y++)
             {
-                for (int y = 0; y < height; y++)
+                for (int x = 0; x < width; x++)
                 {
-                    var row = accessor.GetRowSpan(y);
-                    for (int x = 0; x < width; x++)
+                    if (gray[y * width + x] < threshold)
                     {
-                        Rgba32 p = row[x];
-                        if (p.R < threshold || p.G < threshold || p.B < threshold)
-                        {
-                            if (x < left) left = x;
-                            if (x > right) right = x;
-                            if (y < top) top = y;
-                            if (y > bottom) bottom = y;
-                        }
+                        if (x < left) left = x;
+                        if (x > right) right = x;
+                        if (y < top) top = y;
+                        if (y > bottom) bottom = y;
                     }
                 }
-            });
+            }
 
             // No ink detected — blank image
             if (right <= left || bottom <= top)
@@ -199,40 +186,39 @@ namespace OCR
             int cropHeight = bottom - top + 1;
 
             // Crop region of interest
-            var bounds = new Rectangle(left, top, cropWidth, cropHeight);
-            using var cropped = img.Clone(ctx => ctx.Crop(bounds));
+            using var cropped = img.CloneArea(new MagickGeometry(left, top, (uint)cropWidth, (uint)cropHeight));
 
             // Create a square white canvas (to center drawing)
             int squareSize = Math.Max(cropWidth + (margin * 2), cropHeight + (margin * 2));
-            using var squareCanvas = new Image<Rgba32>(squareSize, squareSize, Color.White);
+            using var squareCanvas = new MagickImage(MagickColors.White, (uint)squareSize, (uint)squareSize);
 
             int offsetX = (squareSize - cropWidth) / 2;
             int offsetY = (squareSize - cropHeight) / 2;
-            squareCanvas.Mutate(ctx => ctx.DrawImage(cropped, new Point(offsetX, offsetY), 1f));
+            squareCanvas.Composite(cropped, offsetX, offsetY, CompositeOperator.Over);
 
-            using var resized = squareCanvas.Clone(ctx => ctx.Resize(resizeWidth, resizeHeight));
+            squareCanvas.FilterType = FilterType.Catrom;
+            squareCanvas.Resize(new MagickGeometry((uint)resizeWidth, (uint)resizeHeight) { IgnoreAspectRatio = true });
 
-            resized.Save($"C:\\NTDLS\\NTDLS.Determinet\\OCR\\debug_out\\line{dbgIndex++}.png");
+            squareCanvas.Write($"C:\\NTDLS\\NTDLS.Determinet\\OCR\\debug_out\\line{dbgIndex++}.png");
 
-            // Convert to grayscale and normalize [0..1]
-            var pixels = new double[resizeWidth * resizeHeight];
-            int index = 0;
+            // Normalize grayscale to [0..1]
+            var resizedGray = ReadGray(squareCanvas);
+            return resizedGray.Select(v => v / 255.0).ToArray();
+        }
 
-            resized.ProcessPixelRows(accessor =>
-            {
-                for (int y = 0; y < resizeHeight; y++)
-                {
-                    var row = accessor.GetRowSpan(y);
-                    for (int x = 0; x < resizeWidth; x++)
-                    {
-                        Rgba32 p = row[x];
-                        double gray = (0.299 * p.R + 0.587 * p.G + 0.114 * p.B) / 255.0;
-                        pixels[index++] = gray;
-                    }
-                }
-            });
+        /// <summary>
+        /// Reads the image as one 8-bit luma value per pixel, row-major.
+        /// </summary>
+        private static byte[] ReadGray(IMagickImage<byte> image)
+        {
+            using var pixels = image.GetPixelsUnsafe();
+            var rgb = pixels.ToByteArray(PixelMapping.RGB)
+                ?? throw new InvalidOperationException("Failed to read image pixels.");
 
-            return pixels;
+            var gray = new byte[rgb.Length / 3];
+            for (int i = 0; i < gray.Length; i++)
+                gray[i] = (byte)Math.Round(0.299 * rgb[i * 3] + 0.587 * rgb[i * 3 + 1] + 0.114 * rgb[i * 3 + 2]);
+            return gray;
         }
     }
 }

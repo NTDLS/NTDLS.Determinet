@@ -5,33 +5,27 @@ using static NTDLS.Determinet.DniParameters;
 namespace NTDLS.Determinet.ActivationFunctions
 {
     /// <summary>
-    /// Represents a piecewise linear activation function with configurable slope and output range.
-    /// Combines a linear segment for certain input range with a Leaky ReLU-like behavior for values outside that range. 
+    /// Continuous piecewise-linear activation: slope 1 inside [Range.Min, Range.Max] and slope Alpha outside it.
     /// </summary>
-    /// <remarks>This activation function applies a linear transformation to input values based on the
-    /// specified range: - For inputs less than or equal to the minimum of the range, the output is scaled by the slope
-    /// value. - For inputs greater than or equal to the maximum of the range, the output is also scaled by the slope
-    /// value. - For inputs within the range, the output is equal to the input.  The derivative of the function is
-    /// constant outside the range (equal to the slope) and 1 within the range.</remarks>
+    /// <remarks>
+    /// f(x) = x                              when Range.Min &lt; x &lt; Range.Max
+    /// f(x) = Range.Max + Alpha * (x - Range.Max) when x &gt;= Range.Max
+    /// f(x) = Range.Min + Alpha * (x - Range.Min) when x &lt;= Range.Min
+    /// </remarks>
     public class DniPiecewiseLinearFunction : IDniActivationFunction
     {
         /// <summary>
-        /// Gets a value indicating whether the cross-entropy method is used in the analysis.
+        /// Slope used outside of <see cref="Range"/>.
         /// </summary>
-        public bool UsesCrossEntropy { get; } = false;
+        public double Alpha { get; private set; }
 
         /// <summary>
-        /// Gets the linear slope value used in calculations.
+        /// Input range within which the function has slope 1.
         /// </summary>
-        public double Alpha { get; private set; } //Linear slope value.
+        public DniRange Range { get; private set; }
 
         /// <summary>
-        /// Gets the range of valid DNI values for the operation.
-        /// </summary>
-        public DniRange Range { get; private set; } //Function output range.
-
-        /// <summary>
-        /// Default constructor for Piecewise Linear activation function.
+        /// Initializes a new instance of the <see cref="DniPiecewiseLinearFunction"/> class.
         /// </summary>
         public DniPiecewiseLinearFunction(DniNamedParameterCollection param)
         {
@@ -39,37 +33,25 @@ namespace NTDLS.Determinet.ActivationFunctions
             Range = param.Get<DniRange>(Piecewise.Range);
         }
 
-        /// <summary>
-        /// Applies the activation function to each element in the input array.
-        /// </summary>
+        /// <inheritdoc/>
         public double[] Activation(double[] nodes)
         {
-            var result = new List<double>();
-
-            foreach (var node in nodes)
+            var result = new double[nodes.Length];
+            for (int i = 0; i < nodes.Length; i++)
             {
-                if (node <= Range.Min)
-                    result.Add(Alpha * node);
-                else if (node >= Range.Max)
-                    result.Add(Alpha * node);
+                double x = nodes[i];
+                if (x >= Range.Max)
+                    result[i] = Range.Max + Alpha * (x - Range.Max);
+                else if (x <= Range.Min)
+                    result[i] = Range.Min + Alpha * (x - Range.Min);
                 else
-                    result.Add(node);
+                    result[i] = x;
             }
-
-            return result.ToArray();
+            return result;
         }
 
-        /// <summary>
-        /// Calculates the derivative of the activation function at the specified input value.
-        /// </summary>
+        /// <inheritdoc/>
         public double Derivative(double x)
-        {
-            if (x <= Range.Min)
-                return Alpha;
-            else if (x >= Range.Max)
-                return Alpha;
-            else
-                return 1;
-        }
+            => (x >= Range.Max || x <= Range.Min) ? Alpha : 1.0;
     }
 }

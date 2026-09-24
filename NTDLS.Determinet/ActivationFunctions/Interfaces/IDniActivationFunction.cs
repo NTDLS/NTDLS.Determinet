@@ -1,32 +1,34 @@
 namespace NTDLS.Determinet.ActivationFunctions.Interfaces
 {
     /// <summary>
-    /// Represents an activation function used in neural network layers, providing methods for  calculating activation
-    /// values and their derivatives.
+    /// Defines an element-wise activation function and its derivative.
     /// </summary>
-    /// <remarks>Activation functions are a key component of neural networks, introducing non-linearity  to
-    /// the model. This interface defines the contract for implementing custom activation  functions, which can be
-    /// applied to nodes in a layer and used to compute gradients during  backpropagation.</remarks>
     public interface IDniActivationFunction
     {
         /// <summary>
-        /// Applies an activation function to the specified array of input nodes.
+        /// Applies the activation function to each node, returning a new array.
+        /// Implementations must not modify <paramref name="nodes"/>.
         /// </summary>
-        /// <param name="nodes">An array of double values representing the input nodes to be processed. Cannot be null.</param>
-        /// <returns>An array of double values representing the output nodes after the activation function is applied. The length
-        /// of the output array matches the input array.</returns>
+        /// <param name="nodes">The pre-activation values.</param>
         double[] Activation(double[] nodes);
 
         /// <summary>
-        /// Calculates the derivative of a mathematical function at the specified point.
+        /// Computes the derivative of the activation function with respect to its pre-activation input.
         /// </summary>
-        /// <param name="x">The point at which to evaluate the derivative.</param>
-        /// <returns>The value of the derivative at the specified point.</returns>
+        /// <param name="x">The pre-activation value (the same value that was passed to <see cref="Activation"/>).</param>
         double Derivative(double x);
+    }
 
+    /// <summary>
+    /// Marks an activation function as a SoftMax. SoftMax is not element-wise, so it has no meaningful scalar derivative.
+    /// It is only valid on the output layer, where it is paired with cross-entropy loss and the combined gradient is
+    /// computed analytically as (p - t) / Temperature.
+    /// </summary>
+    public interface IDniSoftMaxFunction : IDniActivationFunction
+    {
         /// <summary>
-        /// Gets a value indicating whether the cross-entropy method is used in the analysis.
+        /// The temperature the logits are divided by before exponentiation.
         /// </summary>
-        bool UsesCrossEntropy { get; }
+        double Temperature { get; }
     }
 }

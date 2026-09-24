@@ -1,3 +1,4 @@
+using ImageMagick;
 using NTDLS.Determinet;
 using NTDLS.Determinet.Types;
 using System.Drawing.Imaging;
@@ -44,13 +45,15 @@ namespace TestHarness.Draw
         {
             var bitmap = simpleDrawControl.GetDrawingBitmap();
 
-            var image = ConvertBitmapToImageSharp(bitmap);
+            // Magick images hold native memory, so they must be disposed rather than left to the GC.
+            using var image = ConvertBitmapToMagick(bitmap);
 
             var inputBits = ImageUtility.GetImageGrayscaleBytes(image, Constants.ImageWidth, Constants.ImageHeight, DniRange<int>.Zero, DniRange<int>.Zero, new DniRange<float>(0.1f, 1), DniRange<double>.One,
                 (img, randomAngle, randomShift, randomBlur, randomScale) =>
                 {
-                    var previewBmp = ToBitmap(img);
-                    pictureBoxAiView.Image = previewBmp;
+                    var previous = pictureBoxAiView.Image;
+                    pictureBoxAiView.Image = ToBitmap(img);
+                    previous?.Dispose();
                 });
 
             if (_dni != null && inputBits != null)
@@ -143,15 +146,17 @@ namespace TestHarness.Draw
             chartPredictions.Invalidate();
         }
 
-        public static Bitmap ToBitmap(SixLabors.ImageSharp.Image<SixLabors.ImageSharp.PixelFormats.Rgba32> image)
+        public static Bitmap ToBitmap(IMagickImage<byte> image)
         {
             using var ms = new MemoryStream();
-            image.Save(ms, new SixLabors.ImageSharp.Formats.Png.PngEncoder());   // lossless
+            image.Write(ms, MagickFormat.Png);   // lossless
             ms.Position = 0;
-            return new Bitmap(ms);
+            // Copy so the Bitmap doesn't depend on the (disposed) stream it was decoded from.
+            using var decoded = new Bitmap(ms);
+            return new Bitmap(decoded);
         }
 
-        public static SixLabors.ImageSharp.Image<SixLabors.ImageSharp.PixelFormats.Rgba32> ConvertBitmapToImageSharp(Bitmap bitmap)
+        public static MagickImage ConvertBitmapToMagick(Bitmap bitmap)
         {
             using var memoryStream = new MemoryStream();
 
@@ -159,8 +164,7 @@ namespace TestHarness.Draw
             bitmap.Save(memoryStream, ImageFormat.Png);
             memoryStream.Position = 0;
 
-            // Load that stream as an ImageSharp image
-            return SixLabors.ImageSharp.Image.Load<SixLabors.ImageSharp.PixelFormats.Rgba32>(memoryStream);
+            return new MagickImage(memoryStream);
         }
 
 

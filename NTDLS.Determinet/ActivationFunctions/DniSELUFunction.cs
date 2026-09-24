@@ -5,31 +5,23 @@ using static NTDLS.Determinet.DniParameters;
 namespace NTDLS.Determinet.ActivationFunctions
 {
     /// <summary>
-    /// Represents the Scaled Exponential Linear Unit (SELU) activation function.
+    /// Scaled Exponential Linear Unit: Lambda * (x for x &gt; 0, otherwise Alpha * (e^x - 1)).
     /// </summary>
-    /// <remarks>
-    /// SELU: f(x) = λ * (x if x > 0 else α*(exp(x)-1))
-    /// Default α = 1.67326, λ = 1.0507
-    /// </remarks>
     public class DniSELUFunction : IDniActivationFunction
     {
         /// <summary>
-        /// Gets a value indicating whether the cross-entropy method is used in the analysis.
-        /// </summary>
-        public bool UsesCrossEntropy { get; } = false;
-
-        /// <summary>
-        /// Gets the alpha value used in calculations or operations.
+        /// Scale of the negative saturation region.
         /// </summary>
         public double Alpha { get; private set; }
 
         /// <summary>
-        /// Gets the value of the lambda parameter used in calculations.
+        /// Output scale.
         /// </summary>
         public double Lambda { get; private set; }
 
+
         /// <summary>
-        /// Default constructor for SELU activation function.
+        /// Initializes a new instance of the <see cref="DniSELUFunction"/> class.
         /// </summary>
         public DniSELUFunction(DniNamedParameterCollection param)
         {
@@ -37,20 +29,20 @@ namespace NTDLS.Determinet.ActivationFunctions
             Lambda = param.Get<double>(SELU.Lambda);
         }
 
-        /// <summary>
-        /// Applies the activation function to each element in the input array.
-        /// </summary>
+        /// <inheritdoc/>
         public double[] Activation(double[] nodes)
         {
-            return nodes.Select(x => Lambda * (x > 0 ? x : Alpha * (Math.Exp(x) - 1))).ToArray();
+            var result = new double[nodes.Length];
+            for (int i = 0; i < nodes.Length; i++)
+            {
+                double x = nodes[i];
+                result[i] = Lambda * (x > 0 ? x : Alpha * (Math.Exp(x) - 1.0));
+            }
+            return result;
         }
 
-        /// <summary>
-        /// Calculates the derivative of the activation function at the specified input value.
-        /// </summary>
+        /// <inheritdoc/>
         public double Derivative(double x)
-        {
-            return Lambda * (x > 0 ? 1 : Alpha * Math.Exp(x));
-        }
+            => Lambda * (x > 0 ? 1.0 : Alpha * Math.Exp(x));
     }
 }

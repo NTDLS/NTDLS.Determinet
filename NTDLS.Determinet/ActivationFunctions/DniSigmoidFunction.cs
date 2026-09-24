@@ -4,40 +4,34 @@ using NTDLS.Determinet.Types;
 namespace NTDLS.Determinet.ActivationFunctions
 {
     /// <summary>
-    /// Represents the sigmoid activation function, commonly used in neural networks.
+    /// Logistic sigmoid: 1 / (1 + e^-x).
     /// </summary>
-    /// <remarks>The sigmoid function maps input values to a range between 0 and 1, making it useful for 
-    /// applications such as binary classification. This class also provides the derivative of  the sigmoid function,
-    /// which is often used during backpropagation in training neural networks.</remarks>
     public class DniSigmoidFunction : IDniActivationFunction
     {
         /// <summary>
-        /// Gets a value indicating whether the cross-entropy method is used in the analysis.
-        /// </summary>
-        public bool UsesCrossEntropy { get; } = false;
-
-        /// <summary>
-        /// Default constructor for the Sigmoid activation function.
+        /// Initializes a new instance of the <see cref="DniSigmoidFunction"/> class.
         /// </summary>
         public DniSigmoidFunction(DniNamedParameterCollection param)
         {
         }
 
-        /// <summary>
-        /// Applies the activation function to each element in the input array.
-        /// </summary>
+        /// <inheritdoc/>
         public double[] Activation(double[] nodes)
         {
-            return nodes.Select(o => 1.0 / (1.0 + Math.Exp(-o))).ToArray();
+            var result = new double[nodes.Length];
+            for (int i = 0; i < nodes.Length; i++)
+            {
+                double x = nodes[i];
+                result[i] = DniMath.Sigmoid(x);
+            }
+            return result;
         }
 
-        /// <summary>
-        /// Calculates the derivative of the activation function at the specified input value.
-        /// </summary>
+        /// <inheritdoc/>
         public double Derivative(double x)
         {
-            double s = 1.0 / (1.0 + Math.Exp(-x));
-            return s * (1 - s);
+            double s = DniMath.Sigmoid(x);
+            return s * (1.0 - s);
         }
     }
 }

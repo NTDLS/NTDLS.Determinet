@@ -5,83 +5,60 @@ using static NTDLS.Determinet.DniParameters;
 namespace NTDLS.Determinet.ActivationFunctions
 {
     /// <summary>
-    /// Represents a softmax activation function with temperature scaling and numerical stability enhancements.
+    /// SoftMax with temperature scaling: e^(x_i / T) / sum(e^(x_j / T)).
     /// </summary>
-    /// <remarks>The softmax function is commonly used in machine learning for converting a vector of raw
-    /// scores (logits)  into probabilities. This implementation includes temperature scaling to control the sharpness
-    /// of the  output probabilities and clamping of logits to prevent numerical instability during
-    /// computation.</remarks>
-    public class DniSoftMaxFunction : IDniActivationFunction
+    /// <remarks>
+    /// SoftMax is only valid on the output layer, where it is trained with cross-entropy loss.
+    /// </remarks>
+    public class DniSoftMaxFunction : IDniSoftMaxFunction
     {
         /// <summary>
-        /// Gets a value indicating whether the cross-entropy method is used in the analysis.
-        /// </summary>
-        public bool UsesCrossEntropy { get; } = true;
-
-        /// <summary>
-        /// Temperature scaling factor. 
-        /// Higher values soften probabilities; lower values sharpen them.
+        /// Temperature the logits are divided by. Values above 1 soften the distribution, below 1 sharpen it.
         /// </summary>
         public double Temperature { get; private set; }
 
         /// <summary>
-        /// Maximum absolute logit value allowed before clamping.
-        /// Prevents overflow in exp() and stabilizes training.
-        /// </summary>
-        public double MaxLogit { get; private set; }
-
-        /// <summary>
-        /// Default constructor for SoftMax activation function.
+        /// Initializes a new instance of the <see cref="DniSoftMaxFunction"/> class.
         /// </summary>
         public DniSoftMaxFunction(DniNamedParameterCollection param)
         {
             Temperature = param.Get<double>(SoftMax.Temperature);
-            MaxLogit = param.Get<double>(SoftMax.MaxLogit);
+            if (!(Temperature > 0) || double.IsInfinity(Temperature))
+                throw new ArgumentOutOfRangeException(nameof(param), $"SoftMax temperature must be a finite value > 0, got {Temperature}.");
         }
 
-        /// <summary>
-        /// Applies the activation function to each element in the input array.
-        /// </summary>
+        /// <inheritdoc/>
         public double[] Activation(double[] nodes)
         {
             if (nodes.Length == 0)
                 return Array.Empty<double>();
 
-            // Clamp logits to prevent extreme exponentials
-            double[] clamped = nodes.Select(v => Math.Clamp(v, -MaxLogit, MaxLogit)).ToArray();
-
-            // Numerical stability: subtract the max before exp
-            double max = clamped.Max();
-
-            // Apply temperature scaling
             double invTemp = 1.0 / Temperature;
 
-            double[] exps = clamped.Select(v =>
+            // Subtracting the max keeps every exponent <= 0, so this cannot overflow,
+            // and the max element contributes e^0 = 1, so the sum is always >= 1.
+            double max = double.NegativeInfinity;
+            for (int i = 0; i < nodes.Length; i++)
+                max = Math.Max(max, nodes[i] * invTemp);
+
+            var result = new double[nodes.Length];
+            double sum = 0.0;
+            for (int i = 0; i < nodes.Length; i++)
             {
-                double e = Math.Exp((v - max) * invTemp);
-                if (double.IsNaN(e) || double.IsInfinity(e))
-                    e = 0.0;
-                return e;
-            }).ToArray();
+                result[i] = Math.Exp(nodes[i] * invTemp - max);
+                sum += result[i];
+            }
 
-            double sum = exps.Sum();
+            for (int i = 0; i < result.Length; i++)
+                result[i] /= sum;
 
-            if (sum <= 1e-12 || double.IsNaN(sum) || double.IsInfinity(sum))
-                sum = 1e-12;
-
-            for (int i = 0; i < exps.Length; i++)
-                exps[i] /= sum;
-
-            return exps;
+            return result;
         }
 
         /// <summary>
-        /// Calculates the derivative of the activation function at the specified input value.
+        /// Not supported: SoftMax is not element-wise. The output-layer gradient is computed jointly with cross-entropy.
         /// </summary>
         public double Derivative(double x)
-        {
-            // Not used directly; handled by cross-entropy gradient
-            return 1.0;
-        }
+            => throw new NotSupportedException("SoftMax has no element-wise derivative; it may only be used on the output layer.");
     }
 }

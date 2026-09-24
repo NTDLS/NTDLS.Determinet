@@ -4,39 +4,31 @@ using NTDLS.Determinet.Types;
 namespace NTDLS.Determinet.ActivationFunctions
 {
     /// <summary>
-    /// Represents the Softplus activation function: f(x) = ln(1 + exp(x))
+    /// SoftPlus: ln(1 + e^x), a smooth approximation of ReLU.
     /// </summary>
-    /// <remarks>
-    /// Softplus is a smooth approximation of ReLU, providing continuous gradients everywhere.
-    /// </remarks>
     public class DniSoftPlusFunction : IDniActivationFunction
     {
         /// <summary>
-        /// Gets a value indicating whether the cross-entropy method is used in the analysis.
-        /// </summary>
-        public bool UsesCrossEntropy { get; } = false;
-
-        /// <summary>
-        /// Default constructor for Softplus activation function.
+        /// Initializes a new instance of the <see cref="DniSoftPlusFunction"/> class.
         /// </summary>
         public DniSoftPlusFunction(DniNamedParameterCollection param)
         {
         }
 
-        /// <summary>
-        /// Applies the activation function to each element in the input array.
-        /// </summary>
+        /// <inheritdoc/>
         public double[] Activation(double[] nodes)
         {
-            return nodes.Select(x => Math.Log(1.0 + Math.Exp(x))).ToArray();
+            var result = new double[nodes.Length];
+            for (int i = 0; i < nodes.Length; i++)
+            {
+                double x = nodes[i];
+                result[i] = DniMath.SoftPlus(x);
+            }
+            return result;
         }
 
-        /// <summary>
-        /// Calculates the derivative of the activation function at the specified input value.
-        /// </summary>
+        /// <inheritdoc/>
         public double Derivative(double x)
-        {
-            return 1.0 / (1.0 + Math.Exp(-x)); // sigmoid(x)
-        }
+            => DniMath.Sigmoid(x);
     }
 }

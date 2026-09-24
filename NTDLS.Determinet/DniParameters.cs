@@ -37,33 +37,31 @@ namespace NTDLS.Determinet
             public static readonly DniNamedParameter WeightDecay = new("Network_WeightDecay", typeof(double), 0.0001);
 
             /// <summary>
-            /// Represents the key used to identify the gradient clipping setting in the network configuration.
+            /// Maximum global L2 norm of the gradient (across every weight, bias and normalization parameter) for a
+            /// single update. When the norm exceeds this value the whole gradient is scaled down to it, which preserves
+            /// the update direction. Set to 0 to disable clipping.
             /// </summary>
-            public static readonly DniNamedParameter GradientClip = new("Network_GradientClip", typeof(double), 0.5);
+            public static readonly DniNamedParameter GradientClip = new("Network_GradientClip", typeof(double), 5.0);
 
             /// <summary>
-            /// Represents a named parameter that specifies whether to enable Adam (Adaptive Moment Estimation) optimization when batch training
+            /// When <see langword="true"/>, updates use the Adam optimizer (with decoupled weight decay, i.e. AdamW)
+            /// for both Train() and TrainBatch(). When <see langword="false"/>, plain SGD with L2 weight decay is used.
             /// </summary>
-            /// <remarks>This parameter determines if the Adam optimization algorithm should be
-            /// applied to batch processing.  The default value is <see langword="false"/>.</remarks>
-            public static readonly DniNamedParameter UseAdamBatchOptimization = new("Network_UseAdamBatchOptimization", typeof(bool), false);
+            public static readonly DniNamedParameter UseAdamOptimization = new("Network_UseAdamOptimization", typeof(bool), false);
         }
 
         /// <summary>
         /// Provides constants representing configuration keys for layer-related settings in a neural network.
         /// </summary>
-        /// <remarks>These constants are typically used to configure layer behaviors, such as enabling
-        /// batch normalization or adjusting its parameters, in a machine learning framework.</remarks>
         public static class Layer
         {
             /// <summary>
-            /// Represents the configuration key for enabling or disabling batch normalization.
+            /// Enables layer normalization on this layer: the layer's weighted sums are normalized to zero mean and unit
+            /// variance across the layer's nodes (per sample), then scaled and shifted by learned gamma/beta values before
+            /// the activation function is applied. Because the statistics are per sample, training and inference behave
+            /// identically. Only valid on intermediate layers.
             /// </summary>
-            public static readonly DniNamedParameter UseBatchNorm = new("Layer_UseBatchNorm", typeof(bool), false);
-            /// <summary>
-            /// In BatchNorm, “momentum” controls how quickly the running mean and variance adapt to the most recent batch statistics during training.
-            /// </summary>
-            public static readonly DniNamedParameter BatchNormMomentum = new("Layer_BatchNormMomentum", typeof(double), 0.2);
+            public static readonly DniNamedParameter UseLayerNorm = new("Layer_UseLayerNorm", typeof(bool), false);
         }
 
         /// <summary>
@@ -76,13 +74,6 @@ namespace NTDLS.Determinet
             /// Higher values soften probabilities; lower values sharpen them.
             /// </summary>
             public static readonly DniNamedParameter Temperature = new("SoftMax_Temperature", typeof(double), 1.0);
-
-            /// <summary>
-            /// Maximum absolute logit value allowed before clamping.
-            /// Prevents overflow in exp() and stabilizes training.
-            /// </summary>
-
-            public static readonly DniNamedParameter MaxLogit = new("SoftMax_MaxLogit", typeof(double), 50.0);
         }
 
         /// <summary>
@@ -113,7 +104,7 @@ namespace NTDLS.Determinet
             /// <remarks>This parameter is used to specify the alpha value, which is a coefficient in
             /// linear calculations. The default value is <see langword="1"/>. The parameter type is <see
             /// cref="double"/>.</remarks>
-            public static readonly DniNamedParameter Alpha = new("Linear_Alpha", typeof(double), 1);
+            public static readonly DniNamedParameter Alpha = new("Linear_Alpha", typeof(double), 1.0);
 
             /// <summary>
             /// Represents a named parameter with a linear alpha range.
@@ -136,7 +127,7 @@ namespace NTDLS.Determinet
             /// </summary>
             /// <remarks>This parameter is identified by the name "Piecewise_Alpha" and has a default
             /// value of 1.  It is of type <see cref="double"/>.</remarks>
-            public static readonly DniNamedParameter Alpha = new("Piecewise_Alpha", typeof(double), 1);
+            public static readonly DniNamedParameter Alpha = new("Piecewise_Alpha", typeof(double), 1.0);
             /// <summary>
             /// Represents a named parameter that specifies a range of values for piecewise alpha calculations.
             /// </summary>
@@ -157,7 +148,7 @@ namespace NTDLS.Determinet
             /// </summary>
             /// <remarks>The parameter is identified by the name "ELU_Alpha" and is associated with
             /// the <see cref="double"/> type.  The default value is set to 1.</remarks>
-            public static readonly DniNamedParameter Alpha = new("ELU_Alpha", typeof(double), 1);
+            public static readonly DniNamedParameter Alpha = new("ELU_Alpha", typeof(double), 1.0);
         }
 
         /// <summary>
@@ -173,15 +164,15 @@ namespace NTDLS.Determinet
             /// </summary>
             /// <remarks>This parameter is used in the Scaled Exponential Linear Unit (SELU)
             /// activation function,  which is commonly applied in neural network computations. The default value is
-            /// 1.67326.</remarks>
-            public static readonly DniNamedParameter Alpha = new("SELU_Alpha", typeof(double), 1.67326);
+            /// 1.6732632423543772, from the original SELU paper.</remarks>
+            public static readonly DniNamedParameter Alpha = new("SELU_Alpha", typeof(double), 1.6732632423543772);
             /// <summary>
             /// Represents the lambda parameter used in the SELU (Scaled Exponential Linear Unit) activation function.
             /// </summary>
             /// <remarks>This parameter is a constant value commonly used in the SELU activation
-            /// function to ensure self-normalizing properties. The default value is <c>1.0507</c>, which is derived
+            /// function to ensure self-normalizing properties. The default value is <c>1.0507009873554805</c>, which is derived
             /// from the original SELU paper.</remarks>
-            public static readonly DniNamedParameter Lambda = new("SELU_Lambda", typeof(double), 1.0507);
+            public static readonly DniNamedParameter Lambda = new("SELU_Lambda", typeof(double), 1.0507009873554805);
         }
     }
 }
