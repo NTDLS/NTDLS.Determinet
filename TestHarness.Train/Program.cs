@@ -16,7 +16,8 @@ namespace TestHarness.Train
                 'A', 'B', 'C', 'D', 'E', 'F','G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'
             ];
 
-        const double _initialLearningRate = 0.0005;  // Starting learning rate for training.
+        const double _initialLearningRate = 0.0001;  // Starting learning rate for training (Adam takes much larger effective steps than SGD, so this is lower than an SGD rate).
+        const double _gradientClip = 5.0;           // Max global L2 norm of each update's gradient. Set to 0 to disable if early epochs look throttled.
         const double _convergence = 0.000000001;    // Threshold for considering the training has converged.
         const int _cooldown = 5;                    // epochs to wait after each learning rate decay.
         const int _patience = 3;                    // Number of epochs to wait before reducing learning rate once cost starts increasing or reaches a plateau.
@@ -91,6 +92,17 @@ namespace TestHarness.Train
 
                 dni = new DniNeuralNetwork(configuration);
             }
+
+            // Train with Adam. A model that was previously trained with SGD is switched over and its learning rate reset,
+            // because an SGD-sized rate is far too aggressive for Adam. Adam state is saved in checkpoints, so resuming an
+            // Adam model continues exactly where it left off (including its scheduled learning rate).
+            if (!dni.Parameters.Get<bool>(Network.UseAdamOptimization))
+            {
+                dni.Parameters.Set(Network.UseAdamOptimization, true);
+                dni.Parameters.Set(Network.LearningRate, _initialLearningRate);
+            }
+
+            dni.Parameters.Set(Network.GradientClip, _gradientClip);
 
             // Allow setting initial learning rate from command line for experimentation:
             if (args.Length > 0 && string.IsNullOrWhiteSpace(args[0]) == false && double.TryParse(args[0], out var overrideLearningRate))
