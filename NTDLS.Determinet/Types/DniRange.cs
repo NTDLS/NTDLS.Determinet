@@ -1,4 +1,3 @@
-using ProtoBuf;
 using System.Globalization;
 
 namespace NTDLS.Determinet.Types
@@ -31,12 +30,12 @@ namespace NTDLS.Determinet.Types
         /// <summary>
         /// Gets or sets the minimum value.
         /// </summary>
-        [ProtoMember(1)] public double Min { get; set; }
+        public double Min { get; set; }
 
         /// <summary>
         /// Gets or sets the maximum allowable value.
         /// </summary>
-        [ProtoMember(2)] public double Max { get; set; }
+        public double Max { get; set; }
 
         /// <summary>
         /// Gets the length of the range, calculated as the difference between the maximum and minimum values.

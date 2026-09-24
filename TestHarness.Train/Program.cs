@@ -21,7 +21,7 @@ namespace TestHarness.Train
         const double _convergence = 0.000000001;    // Threshold for considering the training has converged.
         const int _cooldown = 5;                    // epochs to wait after each learning rate decay.
         const int _patience = 3;                    // Number of epochs to wait before reducing learning rate once cost starts increasing or reaches a plateau.
-        const double _decayFactor = 0.8;            // Factor to reduce learning rate
+        const double _decayFactor = 0.5;            // Factor to reduce learning rate
         const int _trainingEpochs = 250;            // Total number of training epochs
         const double _minDelta = 0.001;             // minimum improvement threshold
         const int _earlyStopPatience = 10;          // epochs with no improvement before stopping
@@ -73,10 +73,10 @@ namespace TestHarness.Train
                 var leakyReLUParam = new DniNamedParameterCollection();
                 //leakyReLUParam.Set(Layer.UseLayerNorm, true);
 
-                //MLPs: 2–3 hidden layers, 128–512 units each, tapering (512, 256, 128).
-                configuration.AddIntermediateLayer(2048, DniActivationType.LeakyReLU);
+                //MLPs: 2–3 hidden layers, tapering (1024, 512, 256).
+                configuration.AddIntermediateLayer(1024, DniActivationType.LeakyReLU, leakyReLUParam);
                 configuration.AddIntermediateLayer(512, DniActivationType.LeakyReLU, leakyReLUParam);
-                configuration.AddIntermediateLayer(128, DniActivationType.LeakyReLU);
+                configuration.AddIntermediateLayer(256, DniActivationType.LeakyReLU, leakyReLUParam);
 
                 /*//Example of adding parameters for a layer activation function:
                 var piecewiseLinearParam = new DniNamedFunctionParameters();
@@ -103,6 +103,7 @@ namespace TestHarness.Train
             }
 
             dni.Parameters.Set(Network.GradientClip, _gradientClip);
+            dni.Parameters.Set(Network.WeightDecay, 0.01);
 
             // Allow setting initial learning rate from command line for experimentation:
             if (args.Length > 0 && string.IsNullOrWhiteSpace(args[0]) == false && double.TryParse(args[0], out var overrideLearningRate))

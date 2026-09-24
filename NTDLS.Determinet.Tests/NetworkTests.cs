@@ -181,6 +181,8 @@ namespace NTDLS.Determinet.Tests
             Assert.Equal(0.001, dni.Parameters.Get<double>(Network.LearningRate));
         }
 
+        // PBN0022 is a false positive for these legacy mirrors: non-null sub-messages are always written.
+#pragma warning disable PBN0022
         [ProtoContract]
         private class LegacyState
         {

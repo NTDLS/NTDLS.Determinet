@@ -8,12 +8,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="SixLabors.ImageSharp" Version="3.1.12" />
-    <PackageReference Include="SixLabors.ImageSharp.Drawing" Version="2.1.7" />
+    <ProjectReference Include="..\NTDLS.Determinet\NTDLS.Determinet.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\NTDLS.Determinet\NTDLS.Determinet.csproj" />
+    <PackageReference Include="Magick.NET-Q8-AnyCPU" Version="14.17.1" />
   </ItemGroup>
 
 </Project>

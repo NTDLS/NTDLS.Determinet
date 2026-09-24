@@ -15,7 +15,10 @@ namespace NTDLS.Determinet
         /// <summary>
         /// Gets the collection of named parameters associated with the current instance.
         /// </summary>
+        //PBN0022 targets scalars whose non-default initializer could be skipped on the wire; a non-null sub-message is always written.
+#pragma warning disable PBN0022
         [ProtoMember(1)] public DniNamedParameterCollection Parameters { get; private set; } = new();
+#pragma warning restore PBN0022
 
         /// <summary>
         /// Gets the collection of layers associated with the current object.
