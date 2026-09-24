@@ -7,7 +7,7 @@
     <Title>NTDLS.Determinet</Title>
     <Nullable>enable</Nullable>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
-    <Copyright>Copyright © 2025 NetworkDLS</Copyright>
+    <Copyright>Copyright © 2026 NetworkDLS</Copyright>
     <Description>Determinet is versatile multilayer perception neural network designed for ease of use and extendibility.</Description>
     <PackageProjectUrl>https://github.com/NTDLS/NTDLS.Determinet</PackageProjectUrl>
     <RepositoryUrl>https://github.com/NTDLS/NTDLS.Determinet</RepositoryUrl>
@@ -19,7 +19,7 @@
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <Authors>NetworkDLS</Authors>
     <Company>NetworkDLS</Company>
-    <version>2.0.0</version>
+    <version>2.1.0</version>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <IncludeSymbols>True</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
