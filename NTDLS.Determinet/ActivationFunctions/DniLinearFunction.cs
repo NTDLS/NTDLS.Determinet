@@ -5,31 +5,22 @@ using static NTDLS.Determinet.DniParameters;
 namespace NTDLS.Determinet.ActivationFunctions
 {
     /// <summary>
-    /// Represents a linear activation function with configurable slope and output range.
+    /// Scaled linear activation clamped to an output range: clamp(Alpha * x, Range.Min, Range.Max).
     /// </summary>
-    /// <remarks>This activation function applies a linear transformation to the input values, scaling them by
-    /// the  <see cref="Alpha"/> parameter. The output is clamped to the specified <see cref="Range"/> to ensure  it
-    /// remains within the defined bounds. This function is commonly used in neural network models where  a simple
-    /// linear transformation is required.</remarks>
     public class DniLinearFunction : IDniActivationFunction
     {
         /// <summary>
-        /// Gets a value indicating whether the cross-entropy method is used in the analysis.
+        /// Linear slope value.
         /// </summary>
-        public bool UsesCrossEntropy { get; } = false;
+        public double Alpha { get; private set; }
 
         /// <summary>
-        /// Gets the linear slope value used in calculations.
+        /// Function output range.
         /// </summary>
-        public double Alpha { get; private set; } //Linear slope value.
+        public DniRange Range { get; private set; }
 
         /// <summary>
-        /// Gets the range of valid DNI values for the operation.
-        /// </summary>
-        public DniRange Range { get; private set; } //Function output range.
-
-        /// <summary>
-        /// Default constructor for Linear activation function.
+        /// Initializes a new instance of the <see cref="DniLinearFunction"/> class.
         /// </summary>
         public DniLinearFunction(DniNamedParameterCollection param)
         {
@@ -37,46 +28,22 @@ namespace NTDLS.Determinet.ActivationFunctions
             Range = param.Get<DniRange>(Linear.Range);
         }
 
-        /// <summary>
-        /// Applies the activation function to each element in the input array.
-        /// </summary>
+        /// <inheritdoc/>
         public double[] Activation(double[] nodes)
         {
-            var result = new List<double>();
-
-            foreach (var node in nodes)
+            var result = new double[nodes.Length];
+            for (int i = 0; i < nodes.Length; i++)
             {
-                double y = Alpha * node;
-
-                if (y > Range.Max)
-                {
-                    result.Add(Range.Max);
-                }
-                else if (y < Range.Min)
-                {
-                    result.Add(Range.Min);
-                }
-                else
-                {
-                    result.Add(y);
-                }
+                result[i] = Math.Clamp(Alpha * nodes[i], Range.Min, Range.Max);
             }
-
-            return result.ToArray();
+            return result;
         }
 
-        /// <summary>
-        /// Calculates the derivative of the activation function at the specified input value.
-        /// </summary>
+        /// <inheritdoc/>
         public double Derivative(double x)
         {
             double y = Alpha * x;
-
-            if (y <= Range.Min || y >= Range.Max)
-            {
-                return 0;
-            }
-            return Alpha;
+            return (y > Range.Min && y < Range.Max) ? Alpha : 0.0;
         }
     }
 }

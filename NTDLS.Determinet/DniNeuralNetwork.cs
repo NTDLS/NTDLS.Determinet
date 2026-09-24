@@ -1,4 +1,4 @@
-﻿using NTDLS.Determinet.ActivationFunctions;
+using NTDLS.Determinet.ActivationFunctions.Interfaces;
 using NTDLS.Determinet.Types;
 using ProtoBuf;
 using System.IO.Compression;
@@ -10,16 +10,38 @@ namespace NTDLS.Determinet
     /// Represents a neural network designed for training and inference tasks.
     /// </summary>
     /// <remarks>The <see cref="DniNeuralNetwork"/> class provides functionality for creating, training, and
-    /// evaluating a neural network. It supports configurable input, hidden, and output layers, as well as various
-    /// activation functions and parameters. The network can be trained using backpropagation and gradient descent, and
-    /// it calculates loss using the cross-entropy method with SoftMax activation for classification tasks.  This class
-    /// also supports saving and loading the network's state to and from a file for persistence.</remarks>
+    /// evaluating a fully-connected feed-forward neural network. It is trained by backpropagation using either SGD or
+    /// Adam. The loss is chosen from the output layer: a SoftMax output uses cross-entropy loss, any other output uses
+    /// mean squared error (0.5 * sum((prediction - target)^2)).
+    /// <para>Inference via <see cref="Forward(double[])"/> does not modify the network, so it may be called
+    /// concurrently from multiple threads. Training methods mutate the network and must not run concurrently with
+    /// each other or with inference.</para></remarks>
     public class DniNeuralNetwork
     {
+        private const double LayerNormEpsilon = 1e-5;
+        private const double AdamBeta1 = 0.9;
+        private const double AdamBeta2 = 0.999;
+        private const double AdamEpsilon = 1e-8;
+
+        /// <summary>
+        /// Below this amount of multiply-adds, loops run sequentially because thread dispatch would cost more than it saves.
+        /// </summary>
+        private const long ParallelWorkThreshold = 1 << 15;
+
+        /// <summary>
+        /// Block of input nodes processed per task when propagating error backward through a weight matrix.
+        /// </summary>
+        private const int BackpropBlockSize = 256;
+
         /// <summary>
         /// Gets the current state of being for the DNI (Digital Neural Interface).
         /// </summary>
         internal DniStateOfBeing State { get; private set; } = new();
+
+        /// <summary>
+        /// Reusable gradient accumulators, allocated on first training call.
+        /// </summary>
+        private DniGradients? _gradients;
 
         #region State Passthroughs.
 
@@ -51,14 +73,13 @@ namespace NTDLS.Determinet
         /// <summary>
         /// Initializes a new instance of the <see cref="DniNeuralNetwork"/> class using the specified configuration.
         /// </summary>
-        /// <remarks>This constructor sets up the neural network by configuring its layers (input, hidden,
-        /// and output) and initializing weights and biases. The input layer, hidden layers, and output layer are
-        /// defined based on the provided <paramref name="configuration"/>. The learning rate is also set during
-        /// initialization.</remarks>
         /// <param name="configuration">The configuration settings for the neural network, including learning rate, input layer, hidden layers, and
         /// output layer.</param>
         public DniNeuralNetwork(DniConfiguration configuration)
         {
+            if (configuration.InputNodes <= 0)
+                throw new ArgumentException("Input layer is not defined.", nameof(configuration));
+
             State.Parameters.Set(Network.LearningRate, configuration.LearningRate);
 
             //Add input layer.
@@ -89,40 +110,41 @@ namespace NTDLS.Determinet
 
         #endregion
 
-        #region Initilization.
+        #region Initialization.
 
         /// <summary>
-        /// Initializes the weights and biases for the neural network layers.
+        /// Initializes weights with a zero-mean Gaussian whose variance is matched to the receiving layer's activation
+        /// function, and initializes all biases to zero.
         /// </summary>
-        /// <remarks>This method uses the He initialization technique to set the weights to small random
-        /// values  based on the size of the current layer. Biases are initialized to random values in the range [-0.5, 0.5].
-        /// The initialized weights and biases are stored in the collection.</remarks>
+        /// <remarks>
+        /// He (std = sqrt(2 / fanIn)) for ReLU-family activations, LeCun (std = sqrt(1 / fanIn)) for SELU, and
+        /// Glorot/Xavier (std = sqrt(2 / (fanIn + fanOut))) for everything else (sigmoid, tanh, softmax, linear, ...).
+        /// These keep activation variance roughly constant from layer to layer so deep networks neither explode nor vanish.
+        /// </remarks>
         private void InitializeWeightsAndBiases()
         {
-            for (int i = 0; i < State.Layers.Count - 1; i++)
+            for (int l = 1; l < State.Layers.Count; l++)
             {
-                int currentSize = State.Layers[i].NodeCount;
-                int nextSize = State.Layers[i + 1].NodeCount;
+                int fanIn = State.Layers[l - 1].NodeCount;
+                int fanOut = State.Layers[l].NodeCount;
 
-                var layerWeights = new double[currentSize, nextSize];
-                var layerBiases = new double[nextSize];
-
-                // Initialize weights and biases with small random values
-                for (int j = 0; j < currentSize; j++)
+                double std = State.Layers[l].ActivationType switch
                 {
-                    for (int k = 0; k < nextSize; k++)
-                    {
-                        double std = Math.Sqrt(2.0 / currentSize); // He init
-                        layerWeights[j, k] = DniUtility.NextGaussian(0, std);
-                    }
+                    DniActivationType.ReLU or DniActivationType.LeakyReLU or DniActivationType.ELU
+                        or DniActivationType.Swish or DniActivationType.Mish or DniActivationType.SoftPlus
+                        => Math.Sqrt(2.0 / fanIn),
+                    DniActivationType.SELU
+                        => Math.Sqrt(1.0 / fanIn),
+                    _ => Math.Sqrt(2.0 / (fanIn + fanOut)),
+                };
+
+                var synapse = new DniSynapse(fanIn, fanOut);
+                for (int w = 0; w < synapse.Weights.Length; w++)
+                {
+                    synapse.Weights[w] = DniUtility.NextGaussian(0, std);
                 }
 
-                for (int j = 0; j < nextSize; j++)
-                {
-                    layerBiases[j] = DniUtility.Random.NextDouble() - 0.5;
-                }
-
-                State.Synapses.Add(new DniSynapse(layerWeights, layerBiases));
+                State.Synapses.Add(synapse);
             }
         }
 
@@ -133,37 +155,38 @@ namespace NTDLS.Determinet
         /// <summary>
         /// Computes the output of the model for the given input values.
         /// </summary>
+        /// <remarks>This method does not modify the network and is safe to call concurrently (but not concurrently with training).</remarks>
         /// <param name="inputs">An array of input values to be processed by the model. Cannot be null.</param>
-        /// <returns>An array of output values resulting from processing the inputs. The length and content of the output depend
-        /// on the model's configuration.</returns>
+        /// <returns>A new array of output values.</returns>
         public double[] Forward(double[] inputs)
-            => Forward(inputs, false);
+        {
+            ValidateInputs(inputs);
+
+            var activations = inputs;
+            for (int l = 1; l < State.Layers.Count; l++)
+            {
+                activations = ComputeLayer(l, activations, record: false);
+            }
+            return activations;
+        }
 
         /// <summary>
         /// Computes the output of the model for the given labeled input values.
         /// </summary>
-        /// <remarks>This method processes the input values based on the model's current state and
-        /// configuration. Ensure that the provided <paramref name="labelValues"/> contains valid labels and values
-        /// corresponding to the model's input layer.</remarks>
         /// <param name="labelValues">The labeled input values to process, represented as a <see cref="DniNamedLabelValues"/> object.</param>
         /// <returns>An array of <see cref="double"/> values representing the computed output of the model.</returns>
         public double[] Forward(DniNamedLabelValues labelValues)
-        {
-            var inputs = State.Layers[0].GetLabelValues(labelValues);
-            return Forward(inputs, false);
-        }
+            => Forward(State.Layers[0].GetLabelValues(labelValues));
 
         /// <summary>
         /// Computes the output of the model for the given input values and provides the corresponding label values.
         /// </summary>
         /// <param name="inputs">An array of input values to be processed by the model. The array must not be null.</param>
-        /// <param name="outputLabelValues">When this method returns, contains the label values associated with the output of the model. This parameter
-        /// is passed uninitialized.</param>
-        /// <returns>An array of output values produced by the model. The array represents the result of processing the input
-        /// values.</returns>
+        /// <param name="outputLabelValues">When this method returns, contains the label values associated with the output of the model.</param>
+        /// <returns>An array of output values produced by the model.</returns>
         public double[] Forward(double[] inputs, out DniNamedLabelValues outputLabelValues)
         {
-            var outputs = Forward(inputs, false);
+            var outputs = Forward(inputs);
             outputLabelValues = State.Layers.Last().SetLabelValues(outputs);
             return outputs;
         }
@@ -175,136 +198,109 @@ namespace NTDLS.Determinet
         /// <param name="outputLabelValues">When this method returns, contains the output label values corresponding to the final layer of the network.</param>
         /// <returns>An array of double values representing the output of the network after processing the input label values.</returns>
         public double[] Forward(DniNamedLabelValues labelValues, out DniNamedLabelValues outputLabelValues)
+            => Forward(State.Layers[0].GetLabelValues(labelValues), out outputLabelValues);
+
+        /// <summary>
+        /// Forward pass that records every layer's intermediate values for use by <see cref="Backward"/>.
+        /// </summary>
+        private double[] ForwardTraining(double[] inputs)
         {
-            var inputs = State.Layers[0].GetLabelValues(labelValues);
-            var outputs = Forward(inputs, false);
-            outputLabelValues = State.Layers.Last().SetLabelValues(outputs);
-            return outputs;
+            ValidateInputs(inputs);
+
+            var activations = (double[])inputs.Clone();
+            State.Layers[0].PreActivations = activations;
+            State.Layers[0].Activations = activations;
+
+            for (int l = 1; l < State.Layers.Count; l++)
+            {
+                activations = ComputeLayer(l, activations, record: true);
+            }
+            return activations;
         }
 
         /// <summary>
-        /// Propagates the input values forward through the network, computing activations for each layer.
+        /// Computes one layer: weighted sum, optional layer normalization, then the activation function.
         /// </summary>
-        /// <remarks>This method computes the activations for each layer in the network sequentially,
-        /// starting from the input layer and ending with the output layer.  If batch normalization is enabled for a
-        /// layer, it is applied during the forward pass. Nonlinear activation functions are applied to each layer's
-        /// activations.</remarks>
-        /// <param name="inputs">An array of input values to be fed into the network. The length of the array must match the number of input
-        /// neurons in the first layer.</param>
-        /// <param name="isTraining">A boolean value indicating whether the network is in training mode. If <see langword="true"/>, certain
-        /// operations, such as batch normalization, may behave differently to account for training-specific
-        /// adjustments.</param>
-        /// <returns>An array of output values representing the activations of the final layer of the network.</returns>
-        private double[] Forward(double[] inputs, bool isTraining)
+        /// <param name="layerIndex">Index of the layer being computed (must be &gt; 0).</param>
+        /// <param name="input">Activations of the previous layer.</param>
+        /// <param name="record">When true, stores intermediate values on the layer for backpropagation.</param>
+        private double[] ComputeLayer(int layerIndex, double[] input, bool record)
         {
-            if (inputs == null)
-                throw new ArgumentNullException(nameof(inputs));
+            var layer = State.Layers[layerIndex];
 
-            if (inputs.Length != State.Layers[0].NodeCount)
-                throw new ArgumentException($"Input length {inputs.Length} does not match expected size {State.Layers[0].NodeCount}.", nameof(inputs));
+            var z = WeightedSum(input, State.Synapses[layerIndex - 1]);
 
-            State.Layers[0].Activations = inputs;
-
-            for (int i = 1; i < State.Layers.Count; i++)
+            if (layer.UsesLayerNorm)
             {
-                var layer = State.Layers[i];
-
-                layer.Activations = // Weighted sum
-                     ActivateLayer(State.Layers[i - 1].Activations, State.Synapses[i - 1].Weights, State.Synapses[i - 1].Biases);
-
-                if (layer.Parameters.Get<bool>(Layer.UseBatchNorm))
-                {
-                    BatchNormalize(layer, isTraining);
-                }
-
-                // Capture pre-activation values before the nonlinear activation function.
-                // Backpropagation uses these to compute correct activation derivatives.
-                layer.PreActivations = layer.Activations;
-
-                // Nonlinear activation
-                layer.Activations = layer.Activate();
+                z = LayerNormalize(layer, z, record);
             }
 
-            return State.Layers.Last().Activations;
+            var activations = layer.Activate(z);
+
+            if (record)
+            {
+                layer.PreActivations = z;
+                layer.Activations = activations;
+            }
+
+            return activations;
         }
 
         /// <summary>
-        /// Normalizes the values in the specified array of activations using batch normalization.
+        /// Computes bias + W·input for every node of the receiving layer.
         /// </summary>
-        /// <remarks>This method applies batch normalization to the input array by adjusting the values to
-        /// have a mean of 0 and a standard deviation of 1, followed by optional scaling and shifting.  The
-        /// normalization is performed in place, modifying the original array.</remarks>
-        private static void BatchNormalize(DniLayer layer, bool isTraining)
+        private static double[] WeightedSum(double[] input, DniSynapse synapse)
         {
-            if (layer.Gamma == null || layer.Beta == null)
-                return;
+            int inputCount = synapse.InputCount;
+            var weights = synapse.Weights;
+            var biases = synapse.Biases;
+            var output = new double[synapse.OutputCount];
 
-            var momentum = layer.Parameters.Get<double>(Layer.BatchNormMomentum);
-
-            // --- TRAINING ---
-            if (isTraining)
+            ParallelFor(synapse.OutputCount, inputCount, o =>
             {
-                // Compute global batch statistics for this layer.
-                double batchMean = layer.Activations.Average();
-                double batchVar = layer.Activations.Select(a => Math.Pow(a - batchMean, 2)).Average();
-
-                // Update running stats (EMA)
-                layer.RunningMean = momentum * layer.RunningMean + (1 - momentum) * batchMean;
-                layer.RunningVariance = momentum * layer.RunningVariance + (1 - momentum) * batchVar;
-
-                // Normalize using batch statistics.
-                double stdDev = Math.Sqrt(batchVar + 1e-8);
-                for (int i = 0; i < layer.Activations.Length; i++)
-                {
-                    layer.Activations[i] = layer.Gamma[i] * ((layer.Activations[i] - batchMean) / stdDev) + layer.Beta[i];
-                }
-            }
-            // --- INFERENCE ---
-            else
-            {
-                double stdDev = Math.Sqrt(layer.RunningVariance + 1e-8);
-                for (int i = 0; i < layer.Activations.Length; i++)
-                {
-                    layer.Activations[i] = layer.Gamma[i] * ((layer.Activations[i] - layer.RunningMean) / stdDev) + layer.Beta[i];
-                }
-            }
-        }
-
-        /// <summary>
-        /// Computes the activation values for a layer in a neural network based on the provided inputs, weights, and
-        /// biases.
-        /// </summary>
-        /// <remarks>This method performs a weighted sum of the inputs and biases for each neuron in the
-        /// layer, clamping the result to the range [-1e6, 1e6]. The computation is parallelized for improved
-        /// performance on large layers.</remarks>
-        /// <param name="inputs">An array of input values to the layer. The length of this array must match the number of rows in <paramref
-        /// name="weights"/>.</param>
-        /// <param name="weights">A 2D array representing the weights of the connections between the input layer and the current layer. The
-        /// number of rows must match the length of <paramref name="inputs"/>, and the number of columns must match the
-        /// length of <paramref name="biases"/>.</param>
-        /// <param name="biases">An array of bias values for the layer. The length of this array determines the size of the output layer.</param>
-        /// <returns>An array of activation values for the layer. The length of the returned array matches the length of
-        /// <paramref name="biases"/>.</returns>
-        private static double[] ActivateLayer(double[] inputs, double[,] weights, double[] biases)
-        {
-            int layerSize = biases.Length;
-            double[] output = new double[layerSize];
-
-            Parallel.For(0, layerSize, DniUtility.ParallelOptions, j =>
-            {
-                double sum = biases[j];
-                for (int i = 0; i < inputs.Length; i++)
-                {
-                    double v = inputs[i] * weights[i, j];
-                    if (double.IsNaN(v) || double.IsInfinity(v))
-                        v = 0;
-                    sum += v;
-                }
-                sum = Math.Clamp(sum, -1e6, 1e6);
-                output[j] = sum;
+                output[o] = biases[o] + DniMath.Dot(weights.AsSpan(o * inputCount, inputCount), input);
             });
 
             return output;
+        }
+
+        /// <summary>
+        /// Normalizes <paramref name="u"/> to zero mean and unit variance across the layer's nodes, then applies the
+        /// learned per-node scale (gamma) and shift (beta).
+        /// </summary>
+        private static double[] LayerNormalize(DniLayer layer, double[] u, bool record)
+        {
+            var gamma = layer.Gamma!;
+            var beta = layer.Beta!;
+            int n = u.Length;
+
+            double mean = 0.0;
+            for (int i = 0; i < n; i++)
+                mean += u[i];
+            mean /= n;
+
+            double variance = 0.0;
+            for (int i = 0; i < n; i++)
+                variance += (u[i] - mean) * (u[i] - mean);
+            variance /= n;
+
+            double inverseStdDev = 1.0 / Math.Sqrt(variance + LayerNormEpsilon);
+
+            var normalized = new double[n];
+            var z = new double[n];
+            for (int i = 0; i < n; i++)
+            {
+                normalized[i] = (u[i] - mean) * inverseStdDev;
+                z[i] = gamma[i] * normalized[i] + beta[i];
+            }
+
+            if (record)
+            {
+                layer.Normalized = normalized;
+                layer.InverseStdDev = inverseStdDev;
+            }
+
+            return z;
         }
 
         #endregion
@@ -312,555 +308,562 @@ namespace NTDLS.Determinet
         #region Training.
 
         /// <summary>
-        /// Trains the model using the provided input data and expected output values.
+        /// Performs one optimizer step on a single sample.
         /// </summary>
         /// <param name="inputs">An array of input values representing the features for training.</param>
         /// <param name="expected">An array of expected output values corresponding to the inputs.</param>
-        /// <returns>The computed loss value, which quantifies the difference between the model's predictions and the expected outputs.</returns>
-        /// <exception cref="Exception">Thrown if the learning rate is less than or equal to zero.</exception>
+        /// <returns>The loss for this sample, computed before the update.</returns>
         public double Train(double[] inputs, double[] expected)
         {
-            var predictions = Forward(inputs, true);
+            var gradients = PrepareGradients();
 
-            // Compute numerically-stable loss
-            double loss = CrossEntropy(predictions, expected);
-
-            Backpropagate(inputs, expected);
+            double loss = AccumulateSample(inputs, expected, gradients);
+            ApplyUpdate(gradients, 1);
 
             State.Parameters.Set(Network.ComputedLoss, loss);
-
             return loss;
         }
 
         /// <summary>
-        /// Performs the backpropagation algorithm to compute gradients and update the weights and biases of the neural
-        /// network based on the provided inputs and expected outputs.
+        /// Trains the network on a mini-batch: gradients are averaged over the samples and a single optimizer step is applied.
         /// </summary>
-        /// <remarks>This method calculates the error for each layer of the neural network, starting from
-        /// the output layer and propagating backward through the hidden layers. The errors are used to adjust the
-        /// weights and biases of the network using gradient descent. If batch normalization is enabled, the method also
-        /// updates the batch normalization parameters (gamma and beta). <para> The method supports parallelization for
-        /// performance optimization during weight updates and error calculations. </para></remarks>
-        /// <param name="inputs">The input values fed into the neural network during the forward pass.</param>
-        /// <param name="actualOutput">The expected output values used to calculate the error during backpropagation.</param>
-        private void Backpropagate(double[] inputs, double[] actualOutput)
-        {
-            double learningRate = State.Parameters.Get<double>(Network.LearningRate);
-            var weightDecay = State.Parameters.Get<double>(Network.WeightDecay);
-            var gradientClip = State.Parameters.Get<double>(Network.GradientClip);
-
-            List<double[]>? errors;
-
-            //Generally, only SoftMax uses Cross Entropy.
-            if (State.Layers.Last().ActivationFunction?.UsesCrossEntropy == true)
-            {
-                var outputError = CrossEntropyLossGradient(State.Layers.Last().Activations, actualOutput);
-                errors = new List<double[]> { outputError };
-            }
-            else
-            {
-                // Calculate the output error for the output layer, adjusting for the activation function
-                var outputError = new double[State.Layers.Last().Activations.Length];
-                for (int i = 0; i < outputError.Length; i++)
-                {
-                    var predicted = State.Layers.Last().Activations[i];
-                    var target = actualOutput[i];
-
-                    // Cross-entropy error combined with output activation derivative
-                    outputError[i] = (predicted - target) * State.Layers.Last().ActivateDerivative(i);
-                }
-                errors = new List<double[]> { outputError };
-            }
-
-            // Calculate errors for each layer back through all hidden layers
-            // Backpropagate through hidden layers
-            for (int i = State.Layers.Count - 2; i > 0; i--)
-            {
-                var layerError = new double[State.Layers[i].NodeCount];
-
-                Parallel.For(0, State.Layers[i].NodeCount, DniUtility.ParallelOptions, j =>
-                {
-                    double sum = 0.0;
-                    for (int k = 0; k < State.Layers[i + 1].NodeCount; k++)
-                        sum += errors.First()[k] * State.Synapses[i].Weights[j, k];
-
-                    layerError[j] = sum * State.Layers[i].ActivateDerivative(j);
-                });
-
-                errors.Insert(0, layerError);
-            }
-
-            // Update weights and biases
-            for (int i = 0; i < State.Synapses.Count; i++)
-            {
-                var synapse = State.Synapses[i];
-                var weights = synapse.Weights;
-                var biases = synapse.Biases;
-                var activations = State.Layers[i].Activations;
-                var error = errors[i];
-
-                Parallel.For(0, weights.GetLength(0), DniUtility.ParallelOptions, j =>
-                {
-                    for (int k = 0; k < weights.GetLength(1); k++)
-                    {
-                        double grad = learningRate * (error[k] * activations[j] + weightDecay * weights[j, k]);
-                        grad = Math.Clamp(grad, -gradientClip, gradientClip);
-                        if (double.IsNaN(grad) || double.IsInfinity(grad))
-                            grad = 0;
-
-                        weights[j, k] -= grad;
-                    }
-                });
-
-                // Bias updates (cheap — sequential is fine)
-                for (int j = 0; j < biases.Length; j++)
-                {
-                    double bgrad = learningRate * error[j];
-                    bgrad = Math.Clamp(bgrad, -gradientClip, gradientClip);
-                    if (double.IsNaN(bgrad) || double.IsInfinity(bgrad))
-                        bgrad = 0;
-
-                    biases[j] -= bgrad;
-                }
-
-                // --- Optional BatchNorm γ, β updates ---
-                if (State.Layers[i + 1].Parameters.Get<bool>(Layer.UseBatchNorm))
-                {
-                    var bnLayer = State.Layers[i + 1];
-                    if (bnLayer.Gamma != null && bnLayer.Beta != null)
-                    {
-                        var layerError = errors[i];
-                        var batchMean = bnLayer.Activations.Average();
-                        var batchVar = bnLayer.Activations.Select(a => Math.Pow(a - batchMean, 2)).Average();
-                        var stdDev = Math.Sqrt(batchVar + 1e-8);
-
-                        int nodeCount = Math.Min(bnLayer.NodeCount, layerError.Length);
-                        for (int j = 0; j < nodeCount; j++)
-                        {
-                            var normalized = (bnLayer.Activations[j] - batchMean) / stdDev;
-                            double gGrad = learningRate * layerError[j] * normalized;
-                            double bGrad = learningRate * layerError[j];
-
-                            gGrad = Math.Clamp(gGrad, -gradientClip, gradientClip);
-                            bGrad = Math.Clamp(bGrad, -gradientClip, gradientClip);
-
-                            bnLayer.Gamma[j] -= gGrad;
-                            bnLayer.Beta[j] -= bGrad;
-
-                            bnLayer.Gamma[j] -= 1e-5 * (bnLayer.Gamma[j] - 1.0);
-                            bnLayer.Gamma[j] = Math.Clamp(bnLayer.Gamma[j], 0.01, 10.0);
-                        }
-                    }
-                }
-            }
-        }
-
-        /// <summary>
-        /// Computes the gradient of the cross-entropy loss function with respect to the predicted values.
-        /// </summary>
-        /// <param name="predicted">An array of predicted probabilities, where each value represents the model's predicted probability for a
-        /// class. Values should be in the range [0, 1].</param>
-        /// <param name="actual">An array of actual class probabilities, where each value represents the true probability for a class.
-        /// Typically, this is a one-hot encoded array.</param>
-        /// <returns>An array representing the gradient of the cross-entropy loss for each class. Each value is the difference
-        /// between the predicted and actual probabilities.</returns>
-        private static double[] CrossEntropyLossGradient(double[] predicted, double[] actual)
-        {
-            var gradient = new double[predicted.Length];
-            for (int i = 0; i < predicted.Length; i++)
-            {
-                gradient[i] = predicted[i] - actual[i];
-            }
-            return gradient;
-        }
-
-        /// <summary>
-        /// Calculates the cross-entropy loss between the predicted probabilities and the expected values.
-        /// </summary>
-        /// <remarks>The method ensures numerical stability by clamping the predicted probabilities to
-        /// avoid logarithms of zero.</remarks>
-        /// <param name="predicted">An array of predicted probabilities, where each value represents the model's confidence for a specific
-        /// class. Each value must be in the range [0, 1].</param>
-        /// <param name="expected">An array of expected values, where each value represents the true probability for a specific class. Each
-        /// value must be in the range [0, 1].</param>
-        /// <returns>The cross-entropy loss as a non-negative double value. A lower value indicates better alignment between the
-        /// predicted and expected probabilities.</returns>
-        private static double CrossEntropy(double[] predicted, double[] expected)
-        {
-            const double EPS = 1e-12; // prevent log(0)
-            double loss = 0.0;
-            for (int i = 0; i < expected.Length; i++)
-            {
-                double p = Math.Clamp(predicted[i], EPS, 1.0 - EPS);
-                loss -= expected[i] * Math.Log(p);
-            }
-            return loss;
-        }
-
-        #endregion
-
-        #region Batch Training.
-
-        /// <summary>
-        /// Trains the network using a batch of data samples and updates the model's weights.
-        /// </summary>
-        /// <remarks>This method performs forward propagation, computes the loss, accumulates gradients
-        /// for the batch,  and applies weight updates using either Adam optimization or stochastic gradient descent
-        /// (SGD),  depending on the network's configuration. <para> If the dataset is exhausted before the specified
-        /// batch size is reached, the method will process  as many samples as are available and compute the average
-        /// loss over those samples. </para></remarks>
-        /// <param name="batchSize">The number of samples to include in the training batch. Must be greater than 0.</param>
-        /// <param name="dataProvider">A function that provides training data samples. Each invocation should return a tuple containing  the input
-        /// values and the expected output values, or <see langword="null"/> if no more data is available.</param>
-        /// <returns>The average loss computed over the batch. Returns 0.0 if no samples were processed.</returns>
+        /// <param name="batchSize">The maximum number of samples to include in the training batch. Must be greater than 0.</param>
+        /// <param name="dataProvider">Called once per sample; returns the input and expected values, or <see langword="null"/>
+        /// if no more data is available (the batch is then processed with however many samples were gathered).</param>
+        /// <returns>The average loss over the batch, computed before the update. Returns 0.0 if no samples were processed.</returns>
         /// <exception cref="ArgumentOutOfRangeException">Thrown if <paramref name="batchSize"/> is less than or equal to 0.</exception>
         public double TrainBatch(int batchSize, Func<(double[] inputs, double[] expected)?> dataProvider)
         {
             if (batchSize <= 0)
                 throw new ArgumentOutOfRangeException(nameof(batchSize), "Batch size must be > 0.");
 
-            if (State.Parameters.Get<bool>(Network.UseAdamBatchOptimization))
-            {
-                EnsureAdamBuffers();
-            }
+            return TrainBatch(EnumerateProvider(batchSize, dataProvider));
+        }
 
-            double lr = State.Parameters.Get<double>(Network.LearningRate);
-            double decay = State.Parameters.Get<double>(Network.WeightDecay);
-            double clip = State.Parameters.Get<double>(Network.GradientClip);
-
-            // Prepare accumulators for gradients
-            var weightGrads = State.Synapses
-                .Select(s => new double[s.Weights.GetLength(0), s.Weights.GetLength(1)])
-                .ToList();
-
-            var biasGrads = State.Synapses
-                .Select(s => new double[s.Biases.Length])
-                .ToList();
+        /// <summary>
+        /// Trains the network on a mini-batch: gradients are averaged over the samples and a single optimizer step is applied.
+        /// </summary>
+        /// <param name="batch">The samples in the batch.</param>
+        /// <returns>The average loss over the batch, computed before the update. Returns 0.0 if the batch is empty.</returns>
+        public double TrainBatch(IEnumerable<(double[] inputs, double[] expected)> batch)
+        {
+            var gradients = PrepareGradients();
 
             double totalLoss = 0.0;
-            int actualBatchCount = 0;
+            int sampleCount = 0;
 
-            // Gather and process batchSize samples
-            for (int b = 0; b < batchSize; b++)
+            foreach (var (inputs, expected) in batch)
             {
-                var sample = dataProvider();
-                if (sample == null)
-                    break; // dataset exhausted early
-
-                var (inputs, expected) = sample.Value;
-                var predicted = Forward(inputs, true);
-                totalLoss += CrossEntropy(predicted, expected);
-                actualBatchCount++;
-
-                // Accumulate gradients (do NOT update weights yet)
-                var (wGrads, bGrads) = ComputeGradients(inputs, expected);
-
-                for (int i = 0; i < State.Synapses.Count; i++)
-                {
-                    var gW = weightGrads[i];
-                    var gB = biasGrads[i];
-                    var dW = wGrads[i];
-                    var dB = bGrads[i];
-
-                    for (int r = 0; r < gW.GetLength(0); r++)
-                        for (int c = 0; c < gW.GetLength(1); c++)
-                            gW[r, c] += dW[r, c];
-
-                    for (int j = 0; j < gB.Length; j++)
-                        gB[j] += dB[j];
-                }
+                totalLoss += AccumulateSample(inputs, expected, gradients);
+                sampleCount++;
             }
 
-            if (actualBatchCount == 0)
+            if (sampleCount == 0)
                 return 0.0;
 
-            if (State.Parameters.Get<bool>(Network.UseAdamBatchOptimization))
-            {
-                ApplyAdamUpdate(weightGrads, biasGrads, actualBatchCount);
-            }
-            else
-            {
-                ApplySGDUpdate(weightGrads, biasGrads, actualBatchCount);
-            }
+            ApplyUpdate(gradients, sampleCount);
 
-            double loss = totalLoss / actualBatchCount;
+            double loss = totalLoss / sampleCount;
             State.Parameters.Set(Network.ComputedLoss, loss);
             return loss;
         }
 
         /// <summary>
-        /// Updates the weights and biases of the network's synapses using the Stochastic Gradient Descent (SGD)
-        /// optimization algorithm.
+        /// Computes the loss of the network on a sample without modifying the network.
         /// </summary>
-        /// <remarks>This method applies the SGD update rule to adjust the weights and biases of the
-        /// network based on the provided gradients. The learning rate, weight decay, and gradient clipping values are
-        /// retrieved from the network's state parameters. Gradients are normalized by the batch size, and weight decay
-        /// is applied to the weights. Gradient values are clipped to the specified range before being used to update
-        /// the weights and biases.</remarks>
-        /// <param name="weightGrads">A list of 2D arrays representing the gradients of the weights for each synapse in the network.</param>
-        /// <param name="biasGrads">A list of 1D arrays representing the gradients of the biases for each synapse in the network.</param>
-        /// <param name="batchCount">The number of samples in the current batch, used to normalize the gradients.</param>
-        private void ApplySGDUpdate(List<double[,]> weightGrads, List<double[]> biasGrads, int batchCount)
+        public double ComputeLoss(double[] inputs, double[] expected)
         {
-            double lr = State.Parameters.Get<double>(Network.LearningRate);
-            double decay = State.Parameters.Get<double>(Network.WeightDecay);
-            double clip = State.Parameters.Get<double>(Network.GradientClip);
+            ValidateInputs(inputs);
+            ValidateExpected(expected);
 
-            for (int i = 0; i < State.Synapses.Count; i++)
+            // Same as Forward(), but keeps the output layer's pre-activations so the loss can be evaluated stably from logits.
+            var activations = inputs;
+            var preActivations = inputs;
+            var outputLayer = State.Layers.Last();
+
+            for (int l = 1; l < State.Layers.Count; l++)
             {
-                var synapse = State.Synapses[i];
-                var W = synapse.Weights;
-                var B = synapse.Biases;
+                var layer = State.Layers[l];
+                preActivations = WeightedSum(activations, State.Synapses[l - 1]);
+                if (layer.UsesLayerNorm)
+                    preActivations = LayerNormalize(layer, preActivations, record: false);
+                activations = layer.Activate(preActivations);
+            }
 
-                var gW = weightGrads[i];
-                var gB = biasGrads[i];
+            return Loss(outputLayer, preActivations, activations, expected);
+        }
 
-                int rows = W.GetLength(0);
-                int cols = W.GetLength(1);
+        private static IEnumerable<(double[] inputs, double[] expected)> EnumerateProvider(
+            int batchSize, Func<(double[] inputs, double[] expected)?> dataProvider)
+        {
+            for (int b = 0; b < batchSize; b++)
+            {
+                var sample = dataProvider();
+                if (sample == null)
+                    yield break;
+                yield return sample.Value;
+            }
+        }
 
-                // --- Weights ---
-                for (int r = 0; r < rows; r++)
+        private DniGradients PrepareGradients()
+        {
+            if (_gradients == null || !_gradients.Matches(State))
+                _gradients = new DniGradients(State);
+            else
+                _gradients.Clear();
+
+            return _gradients;
+        }
+
+        /// <summary>
+        /// Runs a training forward pass on one sample, then backpropagates and adds its gradients to <paramref name="gradients"/>.
+        /// </summary>
+        /// <returns>The sample's loss.</returns>
+        private double AccumulateSample(double[] inputs, double[] expected, DniGradients gradients)
+        {
+            ValidateExpected(expected);
+
+            var outputLayer = State.Layers.Last();
+            var predicted = ForwardTraining(inputs);
+
+            double loss = Loss(outputLayer, outputLayer.PreActivations, predicted, expected);
+            if (!double.IsFinite(loss))
+                throw new InvalidOperationException(
+                    $"Training diverged: loss is {loss}. Lower the learning rate or enable gradient clipping.");
+
+            Backward(expected, gradients);
+
+            return loss;
+        }
+
+        /// <summary>
+        /// Loss of one sample. SoftMax outputs use cross-entropy evaluated from the logits via log-sum-exp (exact and
+        /// stable even when a probability underflows to zero); all other outputs use 0.5 * squared error.
+        /// </summary>
+        private static double Loss(DniLayer outputLayer, double[] preActivations, double[] predicted, double[] expected)
+        {
+            if (outputLayer.ActivationFunction is IDniSoftMaxFunction softMax)
+            {
+                double invTemp = 1.0 / softMax.Temperature;
+                double logSumExp = DniMath.LogSumExp(preActivations, invTemp);
+
+                double loss = 0.0;
+                for (int i = 0; i < expected.Length; i++)
                 {
-                    for (int c = 0; c < cols; c++)
+                    if (expected[i] != 0)
                     {
-                        double grad = (gW[r, c] / batchCount) + decay * W[r, c];
-                        grad = Math.Clamp(grad, -clip, clip);
-                        W[r, c] -= lr * grad;
+                        // log(p_i) = z_i / T - logSumExp
+                        loss -= expected[i] * (preActivations[i] * invTemp - logSumExp);
                     }
                 }
-
-                // --- Biases ---
-                for (int j = 0; j < B.Length; j++)
-                {
-                    double grad = gB[j] / batchCount;
-                    grad = Math.Clamp(grad, -clip, clip);
-                    B[j] -= lr * grad;
-                }
-            }
-        }
-
-        /// <summary>
-        /// Ensures that the Adam optimizer buffers are initialized and synchronized with the current state of the
-        /// synapses.
-        /// </summary>
-        /// <remarks>This method initializes or resets the Adam optimizer's internal buffers, including
-        /// the first moment estimates  (<c>m</c>) and second moment estimates (<c>v</c>) for both weights and biases.
-        /// If the buffers are already  initialized and match the current number of synapses, the method exits without
-        /// making changes.</remarks>
-        private void EnsureAdamBuffers()
-        {
-            if (State.AdamMeanWeights.Count == State.Synapses.Count)
-                return; // already initialized
-
-            State.AdamMeanWeights.Clear();
-            State.AdamVarianceWeights.Clear();
-            State.AdamMeanBiases.Clear();
-            State.AdamVarianceBiases.Clear();
-
-            foreach (var synapse in State.Synapses)
-            {
-                State.AdamMeanWeights.Add(new double[synapse.Weights.GetLength(0), synapse.Weights.GetLength(1)]);
-                State.AdamVarianceWeights.Add(new double[synapse.Weights.GetLength(0), synapse.Weights.GetLength(1)]);
-                State.AdamMeanBiases.Add(new double[synapse.Biases.Length]);
-                State.AdamVarianceBiases.Add(new double[synapse.Biases.Length]);
-            }
-
-            State.AdamTimeStep = 0;
-        }
-
-        /// <summary>
-        /// Applies the Adam optimization algorithm to update the weights and biases of the network.
-        /// </summary>
-        /// <remarks>This method updates the weights and biases of the network using the Adam optimization
-        /// algorithm, which combines momentum and adaptive learning rates for efficient training. The gradients are
-        /// normalized by the batch size and optionally clipped to a specified range to prevent exploding gradients.
-        /// Weight decay is applied to the gradients to regularize the model.  The Adam algorithm uses two moment
-        /// estimates (first and second moments) to compute the updates, which are corrected for bias during the initial
-        /// steps. The learning rate, weight decay, gradient clipping threshold, and other hyperparameters are retrieved
-        /// from the network's state.</remarks>
-        /// <param name="weightGrads">A list of 2D arrays representing the gradients of the weights for each layer.</param>
-        /// <param name="biasGrads">A list of arrays representing the gradients of the biases for each layer.</param>
-        /// <param name="batchCount">The number of samples in the current batch, used to normalize the gradients.</param>
-        private void ApplyAdamUpdate(List<double[,]> weightGrads, List<double[]> biasGrads, int batchCount)
-        {
-            double lr = State.Parameters.Get<double>(Network.LearningRate);
-            double decay = State.Parameters.Get<double>(Network.WeightDecay);
-            double clip = State.Parameters.Get<double>(Network.GradientClip);
-
-            const double beta1 = 0.9;
-            const double beta2 = 0.999;
-            const double eps = 1e-8;
-
-            State.AdamTimeStep++;
-
-            for (int i = 0; i < State.Synapses.Count; i++)
-            {
-                var syn = State.Synapses[i];
-                var W = syn.Weights;
-                var B = syn.Biases;
-
-                var gW = weightGrads[i];
-                var gB = biasGrads[i];
-
-                var mW = State.AdamMeanWeights[i];
-                var vW = State.AdamVarianceWeights[i];
-                var mB = State.AdamMeanBiases[i];
-                var vB = State.AdamVarianceBiases[i];
-
-                int rows = W.GetLength(0);
-                int cols = W.GetLength(1);
-
-                // --- Weights ---
-                for (int r = 0; r < rows; r++)
-                {
-                    for (int c = 0; c < cols; c++)
-                    {
-                        double grad = (gW[r, c] / batchCount) + decay * W[r, c];
-                        grad = Math.Clamp(grad, -clip, clip);
-
-                        // Update moment estimates
-                        mW[r, c] = beta1 * mW[r, c] + (1 - beta1) * grad;
-                        vW[r, c] = beta2 * vW[r, c] + (1 - beta2) * grad * grad;
-
-                        // Bias correction
-                        double mHat = mW[r, c] / (1 - Math.Pow(beta1, State.AdamTimeStep));
-                        double vHat = vW[r, c] / (1 - Math.Pow(beta2, State.AdamTimeStep));
-
-                        W[r, c] -= lr * (mHat / (Math.Sqrt(vHat) + eps));
-                    }
-                }
-
-                // --- Biases ---
-                for (int j = 0; j < B.Length; j++)
-                {
-                    double grad = gB[j] / batchCount;
-                    grad = Math.Clamp(grad, -clip, clip);
-
-                    mB[j] = beta1 * mB[j] + (1 - beta1) * grad;
-                    vB[j] = beta2 * vB[j] + (1 - beta2) * grad * grad;
-
-                    double mHat = mB[j] / (1 - Math.Pow(beta1, State.AdamTimeStep));
-                    double vHat = vB[j] / (1 - Math.Pow(beta2, State.AdamTimeStep));
-
-                    B[j] -= lr * (mHat / (Math.Sqrt(vHat) + eps));
-                }
-            }
-        }
-
-        /// <summary>
-        /// Computes the gradients of the weights and biases for the neural network using backpropagation.
-        /// </summary>
-        /// <remarks>This method calculates the gradients by performing a forward pass to compute the
-        /// predicted output, followed by a backward pass to propagate the error through the network. The gradients are
-        /// used to update the weights and biases during the training process.</remarks>
-        /// <param name="inputs">The input values provided to the neural network.</param>
-        /// <param name="expected">The expected output values used to calculate the error.</param>
-        /// <returns>A tuple containing two elements: <list type="bullet"> <item> <description> A list of 2D arrays representing
-        /// the gradients of the weights for each layer. </description> </item> <item> <description> A list of 1D arrays
-        /// representing the gradients of the biases for each layer. </description> </item> </list></returns>
-        private (List<double[,]> WeightGrads, List<double[]> BiasGrads) ComputeGradients(double[] inputs, double[] expected)
-        {
-            var predicted = Forward(inputs, true);
-
-            List<double[]> errors;
-            if (State.Layers.Last().ActivationFunction?.UsesCrossEntropy == true)
-            {
-                errors = new() { CrossEntropyLossGradient(predicted, expected) };
+                return loss;
             }
             else
             {
-                var outputError = new double[predicted.Length];
-                for (int i = 0; i < predicted.Length; i++)
+                double loss = 0.0;
+                for (int i = 0; i < expected.Length; i++)
                 {
-                    var pred = predicted[i];
-                    var target = expected[i];
-                    outputError[i] = (pred - target) * State.Layers.Last().ActivateDerivative(i);
+                    double diff = predicted[i] - expected[i];
+                    loss += 0.5 * diff * diff;
                 }
-                errors = new() { outputError };
+                return loss;
+            }
+        }
+
+        /// <summary>
+        /// Backpropagates the loss of the most recent <see cref="ForwardTraining"/> pass and adds the resulting
+        /// gradients to <paramref name="gradients"/>.
+        /// </summary>
+        private void Backward(double[] expected, DniGradients gradients)
+        {
+            var layers = State.Layers;
+            var outputLayer = layers.Last();
+
+            // delta = dLoss / dPreActivation for the layer currently being processed.
+            var delta = new double[outputLayer.NodeCount];
+
+            if (outputLayer.ActivationFunction is IDniSoftMaxFunction softMax)
+            {
+                // Combined SoftMax + cross-entropy gradient. With p = softmax(z / T):
+                // dL/dz_i = (p_i * sum(t) - t_i) / T, which is the familiar (p_i - t_i) / T for targets summing to 1.
+                double targetSum = expected.Sum();
+                double invTemp = 1.0 / softMax.Temperature;
+                for (int i = 0; i < delta.Length; i++)
+                    delta[i] = (outputLayer.Activations[i] * targetSum - expected[i]) * invTemp;
+            }
+            else
+            {
+                // Squared error: dL/dz_i = (a_i - t_i) * f'(z_i).
+                for (int i = 0; i < delta.Length; i++)
+                    delta[i] = (outputLayer.Activations[i] - expected[i]) * outputLayer.ActivateDerivative(i);
             }
 
-            // Backpropagate
-            for (int i = State.Layers.Count - 2; i > 0; i--)
+            for (int l = layers.Count - 1; l >= 1; l--)
             {
-                var layerError = new double[State.Layers[i].NodeCount];
-                for (int j = 0; j < layerError.Length; j++)
+                var layer = layers[l];
+                var synapse = State.Synapses[l - 1];
+                var previousActivations = layers[l - 1].Activations;
+
+                if (layer.UsesLayerNorm)
                 {
-                    double sum = 0.0;
-                    for (int k = 0; k < State.Layers[i + 1].NodeCount; k++)
-                        sum += errors.First()[k] * State.Synapses[i].Weights[j, k];
-                    layerError[j] = sum * State.Layers[i].ActivateDerivative(j);
+                    delta = LayerNormBackward(layer, delta, gradients.Gamma[l]!, gradients.Beta[l]!);
                 }
-                errors.Insert(0, layerError);
+
+                // delta is now dL/d(weighted sum) for this layer: dL/dW = delta ⊗ previousActivations and dL/db = delta.
+                // Both arrays are freshly allocated per forward/backward pass, so they can be retained as-is.
+                gradients.WeightFactors[l - 1].Add((delta, previousActivations));
+                var biasGradient = gradients.Biases[l - 1];
+                for (int o = 0; o < delta.Length; o++)
+                    biasGradient[o] += delta[o];
+
+                if (l > 1)
+                {
+                    var previousLayer = layers[l - 1];
+                    var previousDelta = PropagateError(synapse, delta);
+                    for (int i = 0; i < previousDelta.Length; i++)
+                        previousDelta[i] *= previousLayer.ActivateDerivative(i);
+                    delta = previousDelta;
+                }
             }
+        }
 
-            var weightGrads = new List<double[,]>();
-            var biasGrads = new List<double[]>();
+        /// <summary>
+        /// Backward pass through layer normalization. Accumulates gamma/beta gradients and converts
+        /// dL/d(normalized output) into dL/d(weighted sum).
+        /// </summary>
+        /// <remarks>
+        /// With x̂ = (u - mean) * invStd and z = gamma * x̂ + beta:
+        /// dL/du_i = invStd * (g_i - mean(g) - x̂_i * mean(g * x̂)), where g = dL/dx̂ = gamma * dL/dz.
+        /// </remarks>
+        private static double[] LayerNormBackward(DniLayer layer, double[] delta, double[] gammaGradient, double[] betaGradient)
+        {
+            var gamma = layer.Gamma!;
+            var normalized = layer.Normalized;
+            int n = delta.Length;
 
-            for (int i = 0; i < State.Synapses.Count; i++)
+            var g = new double[n];
+            double meanG = 0.0;
+            double meanGX = 0.0;
+
+            for (int i = 0; i < n; i++)
             {
-                var synapse = State.Synapses[i];
-                var activations = State.Layers[i].Activations;
-                var error = errors[i];
+                gammaGradient[i] += delta[i] * normalized[i];
+                betaGradient[i] += delta[i];
 
-                var wGrad = new double[synapse.Weights.GetLength(0), synapse.Weights.GetLength(1)];
-                var bGrad = new double[synapse.Biases.Length];
-
-                for (int j = 0; j < wGrad.GetLength(0); j++)
-                    for (int k = 0; k < wGrad.GetLength(1); k++)
-                        wGrad[j, k] = error[k] * activations[j];
-
-                for (int j = 0; j < bGrad.Length; j++)
-                    bGrad[j] = error[j];
-
-                weightGrads.Add(wGrad);
-                biasGrads.Add(bGrad);
+                g[i] = delta[i] * gamma[i];
+                meanG += g[i];
+                meanGX += g[i] * normalized[i];
             }
+            meanG /= n;
+            meanGX /= n;
 
-            return (weightGrads, biasGrads);
+            var result = new double[n];
+            for (int i = 0; i < n; i++)
+                result[i] = layer.InverseStdDev * (g[i] - meanG - normalized[i] * meanGX);
+
+            return result;
+        }
+
+        /// <summary>
+        /// Computes Wᵀ·delta: the loss gradient with respect to the previous layer's activations.
+        /// </summary>
+        /// <remarks>Partitioned by blocks of input nodes so each task writes a disjoint, contiguous slice.</remarks>
+        private static double[] PropagateError(DniSynapse synapse, double[] delta)
+        {
+            int inputCount = synapse.InputCount;
+            int outputCount = synapse.OutputCount;
+            var weights = synapse.Weights;
+            var result = new double[inputCount];
+
+            int blockCount = (inputCount + BackpropBlockSize - 1) / BackpropBlockSize;
+
+            ParallelFor(blockCount, (long)BackpropBlockSize * outputCount, block =>
+            {
+                int start = block * BackpropBlockSize;
+                int length = Math.Min(BackpropBlockSize, inputCount - start);
+                var destination = result.AsSpan(start, length);
+
+                for (int o = 0; o < outputCount; o++)
+                {
+                    if (delta[o] != 0)
+                    {
+                        DniMath.Axpy(delta[o], weights.AsSpan(o * inputCount + start, length), destination);
+                    }
+                }
+            });
+
+            return result;
         }
 
         #endregion
 
-        #region Serilization.
+        #region Optimization.
 
         /// <summary>
-        /// Saves the current state to a file at the specified path.
+        /// Averages the accumulated gradients over <paramref name="sampleCount"/>, applies global-norm clipping, and
+        /// updates every parameter with SGD or Adam.
         /// </summary>
-        /// <remarks>The state is serialized and compressed before being written to the file.  Ensure that
-        /// the specified file path is valid and accessible to avoid exceptions.</remarks>
-        /// <param name="filePath">The full path of the file where the state will be saved. The directory must exist, and the caller must have
-        /// write permissions.</param>
+        private void ApplyUpdate(DniGradients gradients, int sampleCount)
+        {
+            double learningRate = State.Parameters.Get<double>(Network.LearningRate);
+            double weightDecay = State.Parameters.Get<double>(Network.WeightDecay);
+            double gradientClip = State.Parameters.Get<double>(Network.GradientClip);
+            bool useAdam = State.Parameters.Get<bool>(Network.UseAdamOptimization);
+
+            if (!(learningRate > 0) || !double.IsFinite(learningRate))
+                throw new InvalidOperationException($"Learning rate must be a finite value > 0, got {learningRate}.");
+
+            double scale = 1.0 / sampleCount;
+            double norm = Math.Sqrt(gradients.SumOfSquares()) * scale;
+
+            if (!double.IsFinite(norm))
+                throw new InvalidOperationException(
+                    "Training diverged: the gradient is not finite. Lower the learning rate or enable gradient clipping.");
+
+            if (gradientClip > 0 && norm > gradientClip)
+                scale *= gradientClip / norm;
+
+            if (useAdam)
+            {
+                State.AdamTimeStep++;
+                double correction1 = 1.0 - Math.Pow(AdamBeta1, State.AdamTimeStep);
+                double correction2 = 1.0 - Math.Pow(AdamBeta2, State.AdamTimeStep);
+                // Fold both bias corrections into the step size: lr * mHat / sqrt(vHat) == stepSize * m / sqrt(v).
+                double stepSize = learningRate * Math.Sqrt(correction2) / correction1;
+                double epsilon = AdamEpsilon * Math.Sqrt(correction2);
+
+                for (int s = 0; s < State.Synapses.Count; s++)
+                {
+                    var synapse = State.Synapses[s];
+                    synapse.EnsureAdamBuffers();
+
+                    AdamUpdateWeights(synapse, gradients.WeightFactors[s], scale, stepSize, epsilon, learningRate * weightDecay);
+                    AdamUpdate(synapse.Biases, gradients.Biases[s], synapse.AdamMeanBiases, synapse.AdamVarianceBiases,
+                        scale, stepSize, epsilon, 0.0);
+                }
+
+                for (int l = 0; l < State.Layers.Count; l++)
+                {
+                    var layer = State.Layers[l];
+                    if (layer.UsesLayerNorm)
+                    {
+                        layer.EnsureAdamBuffers();
+                        AdamUpdate(layer.Gamma!, gradients.Gamma[l]!, layer.AdamMeanGamma, layer.AdamVarianceGamma,
+                            scale, stepSize, epsilon, 0.0);
+                        AdamUpdate(layer.Beta!, gradients.Beta[l]!, layer.AdamMeanBeta, layer.AdamVarianceBeta,
+                            scale, stepSize, epsilon, 0.0);
+                    }
+                }
+            }
+            else
+            {
+                for (int s = 0; s < State.Synapses.Count; s++)
+                {
+                    var synapse = State.Synapses[s];
+                    SgdUpdateWeights(synapse, gradients.WeightFactors[s], scale, learningRate, weightDecay);
+                    SgdUpdate(synapse.Biases, gradients.Biases[s], scale, learningRate, 0.0);
+                }
+
+                for (int l = 0; l < State.Layers.Count; l++)
+                {
+                    var layer = State.Layers[l];
+                    if (layer.UsesLayerNorm)
+                    {
+                        SgdUpdate(layer.Gamma!, gradients.Gamma[l]!, scale, learningRate, 0.0);
+                        SgdUpdate(layer.Beta!, gradients.Beta[l]!, scale, learningRate, 0.0);
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// SGD with L2 weight decay applied to a weight matrix whose gradient is held as outer-product factors:
+        /// W -= lr * (scale * sum(delta ⊗ input) + decay * W), fused into a single pass over each row.
+        /// </summary>
+        private static void SgdUpdateWeights(DniSynapse synapse, List<(double[] Delta, double[] Input)> factors,
+            double scale, double learningRate, double weightDecay)
+        {
+            int inputCount = synapse.InputCount;
+            var weights = synapse.Weights;
+            double keep = 1.0 - learningRate * weightDecay;
+
+            ParallelFor(synapse.OutputCount, (long)inputCount * (factors.Count + 1), o =>
+            {
+                var row = weights.AsSpan(o * inputCount, inputCount);
+
+                if (keep != 1.0)
+                    DniMath.Scale(keep, row);
+
+                foreach (var (delta, input) in factors)
+                {
+                    if (delta[o] != 0)
+                        DniMath.Axpy(-learningRate * scale * delta[o], input, row);
+                }
+            });
+        }
+
+        /// <summary>
+        /// Per-thread scratch row used to expand factored weight gradients for Adam.
+        /// </summary>
+        [ThreadStatic] private static double[]? _gradientRow;
+
+        /// <summary>
+        /// Adam with decoupled weight decay (AdamW) applied to a weight matrix whose gradient is held as outer-product
+        /// factors. Each row's gradient is expanded into a scratch buffer and consumed immediately.
+        /// </summary>
+        private static void AdamUpdateWeights(DniSynapse synapse, List<(double[] Delta, double[] Input)> factors,
+            double scale, double stepSize, double epsilon, double decoupledDecay)
+        {
+            int inputCount = synapse.InputCount;
+            var weights = synapse.Weights;
+            var mean = synapse.AdamMeanWeights;
+            var variance = synapse.AdamVarianceWeights;
+
+            ParallelFor(synapse.OutputCount, (long)inputCount * (factors.Count + 4), o =>
+            {
+                if (_gradientRow == null || _gradientRow.Length < inputCount)
+                    _gradientRow = new double[inputCount];
+
+                var gradient = _gradientRow.AsSpan(0, inputCount);
+                gradient.Clear();
+
+                foreach (var (delta, input) in factors)
+                {
+                    if (delta[o] != 0)
+                        DniMath.Axpy(scale * delta[o], input, gradient);
+                }
+
+                int offset = o * inputCount;
+                for (int i = 0; i < inputCount; i++)
+                {
+                    int w = offset + i;
+                    double g = gradient[i];
+                    mean[w] = AdamBeta1 * mean[w] + (1.0 - AdamBeta1) * g;
+                    variance[w] = AdamBeta2 * variance[w] + (1.0 - AdamBeta2) * g * g;
+                    weights[w] -= stepSize * mean[w] / (Math.Sqrt(variance[w]) + epsilon) + decoupledDecay * weights[w];
+                }
+            });
+        }
+
+        /// <summary>
+        /// SGD with L2 weight decay: p -= lr * (scale * g + decay * p).
+        /// </summary>
+        private static void SgdUpdate(double[] parameters, double[] gradient, double scale, double learningRate, double weightDecay)
+        {
+            ParallelFor(parameters.Length, 1, i =>
+            {
+                parameters[i] -= learningRate * (scale * gradient[i] + weightDecay * parameters[i]);
+            });
+        }
+
+        /// <summary>
+        /// Adam with decoupled weight decay (AdamW).
+        /// </summary>
+        private static void AdamUpdate(double[] parameters, double[] gradient, double[] mean, double[] variance,
+            double scale, double stepSize, double epsilon, double decoupledDecay)
+        {
+            ParallelFor(parameters.Length, 1, i =>
+            {
+                double g = scale * gradient[i];
+                mean[i] = AdamBeta1 * mean[i] + (1.0 - AdamBeta1) * g;
+                variance[i] = AdamBeta2 * variance[i] + (1.0 - AdamBeta2) * g * g;
+                parameters[i] -= stepSize * mean[i] / (Math.Sqrt(variance[i]) + epsilon) + decoupledDecay * parameters[i];
+            });
+        }
+
+        #endregion
+
+        #region Helpers.
+
+        private void ValidateInputs(double[] inputs)
+        {
+            ArgumentNullException.ThrowIfNull(inputs);
+
+            if (inputs.Length != State.Layers[0].NodeCount)
+                throw new ArgumentException($"Input length {inputs.Length} does not match expected size {State.Layers[0].NodeCount}.", nameof(inputs));
+        }
+
+        private void ValidateExpected(double[] expected)
+        {
+            ArgumentNullException.ThrowIfNull(expected);
+
+            if (expected.Length != State.Layers.Last().NodeCount)
+                throw new ArgumentException($"Expected length {expected.Length} does not match output size {State.Layers.Last().NodeCount}.", nameof(expected));
+        }
+
+        /// <summary>
+        /// Runs <paramref name="body"/> for 0..count-1, in parallel only when the total work justifies it.
+        /// </summary>
+        private static void ParallelFor(int count, long workPerItem, Action<int> body)
+        {
+            if (count * workPerItem < ParallelWorkThreshold)
+            {
+                for (int i = 0; i < count; i++)
+                    body(i);
+            }
+            else
+            {
+                Parallel.For(0, count, DniUtility.ParallelOptions, body);
+            }
+        }
+
+        #endregion
+
+        #region Serialization.
+
+        /// <summary>
+        /// Saves the network (including optimizer state) to a file.
+        /// </summary>
+        /// <param name="filePath">The full path of the file where the state will be saved.</param>
         public void SaveToFile(string filePath)
         {
-            foreach (var synapse in State.Synapses)
-                synapse.PrepareForSerialization();
-
             using var fs = File.Create(filePath);
-            using var zip = new DeflateStream(fs, CompressionLevel.SmallestSize);
+            Save(fs);
+        }
+
+        /// <summary>
+        /// Writes the network (including optimizer state) to a stream as compressed protobuf.
+        /// </summary>
+        public void Save(Stream stream)
+        {
+            using var zip = new DeflateStream(stream, CompressionLevel.SmallestSize, leaveOpen: true);
             Serializer.Serialize(zip, State);
         }
 
         /// <summary>
-        /// Loads a <see cref="DniNeuralNetwork"/> from a file containing its serialized state.
+        /// Loads a <see cref="DniNeuralNetwork"/> from a file previously written by <see cref="SaveToFile"/>.
+        /// Files written by earlier versions of this library are also supported.
         /// </summary>
-        /// <remarks>This method expects the file to contain a compressed serialized representation of the
-        /// neural network's state. The method will decompress the file, deserialize the state, and reconstruct the
-        /// neural network, including reinitializing any necessary runtime components such as activation functions and
-        /// synapse connections.</remarks>
-        /// <param name="filePath">The path to the file that contains the serialized state of the neural network. Must be a valid file path and
-        /// point to an existing file.</param>
-        /// <returns>A <see cref="DniNeuralNetwork"/> instance reconstructed from the serialized state in the specified file.</returns>
+        /// <param name="filePath">The path to the file that contains the serialized network.</param>
         public static DniNeuralNetwork LoadFromFile(string filePath)
         {
             using var fs = File.OpenRead(filePath);
-            using var zip = new DeflateStream(fs, CompressionMode.Decompress);
+            return Load(fs);
+        }
+
+        /// <summary>
+        /// Reads a network previously written by <see cref="Save"/>.
+        /// </summary>
+        public static DniNeuralNetwork Load(Stream stream)
+        {
+            using var zip = new DeflateStream(stream, CompressionMode.Decompress, leaveOpen: true);
             var state = Serializer.Deserialize<DniStateOfBeing>(zip);
 
             foreach (var synapse in state.Synapses)
-                synapse.RebuildAfterDeserialization();
+                synapse.AfterDeserialization();
 
             foreach (var layer in state.Layers)
-                layer.InstantiateActivationFunction();
+                layer.AfterDeserialization();
+
+            if (state.Layers.Count < 2 || state.Synapses.Count != state.Layers.Count - 1)
+                throw new InvalidDataException($"Network has {state.Layers.Count} layers but {state.Synapses.Count} synapses.");
+
+            for (int s = 0; s < state.Synapses.Count; s++)
+            {
+                var synapse = state.Synapses[s];
+                if (synapse.InputCount != state.Layers[s].NodeCount || synapse.OutputCount != state.Layers[s + 1].NodeCount)
+                    throw new InvalidDataException($"Synapse {s} shape {synapse.InputCount}x{synapse.OutputCount} does not match its layers.");
+            }
 
             return new DniNeuralNetwork { State = state };
         }

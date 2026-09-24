@@ -70,8 +70,7 @@ namespace TestHarness.Train
                 configuration.AddInputLayer(Constants.ImageWidth * Constants.ImageHeight);
 
                 var leakyReLUParam = new DniNamedParameterCollection();
-                //leakyReLUParam.Set(Layer.UseBatchNorm, true);
-                //leakyReLUParam.Set(Layer.BatchNormMomentum, 0.9);
+                //leakyReLUParam.Set(Layer.UseLayerNorm, true);
 
                 //MLPs: 2–3 hidden layers, 128–512 units each, tapering (512, 256, 128).
                 configuration.AddIntermediateLayer(2048, DniActivationType.LeakyReLU);

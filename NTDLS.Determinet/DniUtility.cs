@@ -11,32 +11,15 @@ namespace NTDLS.Determinet
     /// flipping coins with specified probabilities, and ensuring non-null values.</remarks>
     public static class DniUtility
     {
-        private static Random? _random = null;
-
         internal static readonly ParallelOptions ParallelOptions = new()
         {
             MaxDegreeOfParallelism = Environment.ProcessorCount
         };
 
         /// <summary>
-        /// Gets a thread-safe instance of the <see cref="Random"/> class for generating random numbers.
+        /// Gets a thread-safe <see cref="System.Random"/> instance shared across the application.
         /// </summary>
-        /// <remarks>The instance is lazily initialized and ensures thread safety using a lock.  This
-        /// property provides a shared <see cref="Random"/> instance that can be used across the application.</remarks>
-        public static Random Random
-        {
-            get
-            {
-                if (_random == null)
-                {
-                    lock (typeof(DniUtility))
-                    {
-                        _random ??= new Random(Guid.NewGuid().GetHashCode());
-                    }
-                }
-                return _random;
-            }
-        }
+        public static Random Random => Random.Shared;
 
         /// <summary>
         /// Generates a random number following a Gaussian (normal) distribution with the specified mean and standard

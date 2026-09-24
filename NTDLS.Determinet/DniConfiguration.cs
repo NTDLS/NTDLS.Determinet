@@ -15,7 +15,7 @@ namespace NTDLS.Determinet
         /// <summary>
         /// Gets or sets the learning rate used to adjust the magnitude of updates during training.
         /// </summary>
-        public double LearningRate { get; set; }
+        public double LearningRate { get; set; } = (double)DniParameters.Network.LearningRate.DefaultValue;
 
         /// <summary>
         /// Gets the number of input nodes in the system.

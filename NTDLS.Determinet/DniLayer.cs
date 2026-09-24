@@ -1,4 +1,4 @@
-﻿using NTDLS.Determinet.ActivationFunctions;
+using NTDLS.Determinet.ActivationFunctions;
 using NTDLS.Determinet.ActivationFunctions.Interfaces;
 using NTDLS.Determinet.Types;
 using ProtoBuf;
@@ -17,19 +17,34 @@ namespace NTDLS.Determinet
     [ProtoContract]
     public class DniLayer
     {
+        #region Training-time state (not serialized). Populated by the most recent training forward pass.
+
         /// <summary>
-        /// Gets the activation values associated with the current instance.
+        /// Output of the layer (after the activation function) from the most recent training forward pass.
         /// </summary>
         public double[] Activations { get; internal set; }
 
         /// <summary>
-        /// Gets the pre-activation values (after weighted sum and batch normalization, but before the activation function).
-        /// Used by backpropagation to compute correct activation derivatives.
+        /// Input to the activation function (after the weighted sum and optional layer normalization) from the most
+        /// recent training forward pass. Backpropagation evaluates activation derivatives at these values.
         /// </summary>
         public double[] PreActivations { get; internal set; }
 
         /// <summary>
-        /// Object instance of the activation function for this layer.
+        /// Layer-normalized weighted sums (x-hat) from the most recent training forward pass. Only used when
+        /// <see cref="UsesLayerNorm"/> is <see langword="true"/>.
+        /// </summary>
+        internal double[] Normalized { get; set; } = [];
+
+        /// <summary>
+        /// 1 / sqrt(variance + epsilon) of the weighted sums from the most recent training forward pass.
+        /// </summary>
+        internal double InverseStdDev { get; set; }
+
+        #endregion
+
+        /// <summary>
+        /// Object instance of the activation function for this layer, or <see langword="null"/> for none (identity).
         /// Set by InstantiateActivationFunction() method.
         /// </summary>
         public IDniActivationFunction? ActivationFunction { get; internal set; }
@@ -51,28 +66,28 @@ namespace NTDLS.Determinet
         /// </summary>
         [ProtoMember(4)] public DniActivationType ActivationType { get; private set; }
 
-        #region Batch Normalization Properties.
+        #region Layer Normalization.
+
+        //ProtoMember 5 and 6 were the (removed) batch-norm running mean and variance.
 
         /// <summary>
-        /// Gets or sets the running mean value used for batch normalization.
-        /// See BatchNormalize() method.
+        /// Learned per-node scale applied after normalization, or <see langword="null"/> when layer normalization is disabled.
         /// </summary>
-        [ProtoMember(5)] public double RunningMean { get; set; }
+        [ProtoMember(7)] public double[]? Gamma { get; internal set; }
         /// <summary>
-        /// Gets or sets the running variance used for batch normalization.
-        /// See BatchNormalize() method.
+        /// Learned per-node shift applied after normalization, or <see langword="null"/> when layer normalization is disabled.
         /// </summary>
-        [ProtoMember(6)] public double RunningVariance { get; set; }
+        [ProtoMember(8)] public double[]? Beta { get; internal set; }
+
+        [ProtoMember(10)] internal double[] AdamMeanGamma { get; set; } = [];
+        [ProtoMember(11)] internal double[] AdamVarianceGamma { get; set; } = [];
+        [ProtoMember(12)] internal double[] AdamMeanBeta { get; set; } = [];
+        [ProtoMember(13)] internal double[] AdamVarianceBeta { get; set; } = [];
+
         /// <summary>
-        /// Gets or sets the gamma values used for batch normalization.
-        /// See BatchNormalize() method.
+        /// Whether this layer applies layer normalization before its activation function.
         /// </summary>
-        [ProtoMember(7)] public double[]? Gamma { get; set; }
-        /// <summary>
-        /// Gets or sets the beta values used for batch normalization.
-        /// See BatchNormalize() method.
-        /// </summary>
-        [ProtoMember(8)] public double[]? Beta { get; set; }
+        public bool UsesLayerNorm => Gamma != null && Beta != null;
 
         #endregion
 
@@ -86,8 +101,6 @@ namespace NTDLS.Determinet
         /// Initializes a new instance of the <see cref="DniLayer"/> class with the specified layer type, node count,
         /// activation type, and parameters.
         /// </summary>
-        /// <remarks>This constructor initializes the layer's activation function and allocates memory for
-        /// the activations based on the specified node count.</remarks>
         /// <param name="layerType">The type of the layer, which determines its role in the network.</param>
         /// <param name="nodeCount">The number of nodes (or neurons) in the layer. Must be a positive integer.</param>
         /// <param name="activationType">The activation function type to be used by the layer.</param>
@@ -95,6 +108,12 @@ namespace NTDLS.Determinet
         /// <param name="labels">An optional array of labels associated with the layer. These are only used if the layer is an input or output layer.</param>
         public DniLayer(DniLayerType layerType, int nodeCount, DniActivationType activationType, DniNamedParameterCollection parameters, string[]? labels)
         {
+            if (nodeCount <= 0)
+                throw new ArgumentOutOfRangeException(nameof(nodeCount), $"{layerType} layer must have at least one node.");
+
+            if (labels != null && labels.Length != nodeCount)
+                throw new ArgumentException($"{layerType} layer label count ({labels.Length}) does not match node count ({nodeCount}).", nameof(labels));
+
             Labels = labels;
             Parameters = parameters;
             LayerType = layerType;
@@ -104,62 +123,59 @@ namespace NTDLS.Determinet
             PreActivations = new double[nodeCount];
             InstantiateActivationFunction();
 
-            if (Parameters.Get(Layer.UseBatchNorm, false))
+            if (Parameters.Get(Layer.UseLayerNorm, false))
             {
+                if (layerType != DniLayerType.Intermediate)
+                    throw new ArgumentException("Layer normalization is only supported on intermediate layers.", nameof(parameters));
+
+                if (nodeCount < 2)
+                    throw new ArgumentException("Layer normalization requires at least two nodes.", nameof(parameters));
+
                 Gamma = Enumerable.Repeat(1.0, NodeCount).ToArray();
                 Beta = new double[NodeCount];
-                RunningMean = 0.0;
-                RunningVariance = 1.0;
             }
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="DniLayer"/> class.
+        /// Used only for deserialization.
         /// </summary>
-        /// <remarks>This constructor is intended for use during deserialization. It initializes the <see
-        /// cref="Activations"/>  property to an empty array and the <see cref="Parameters"/> property to a new instance
-        /// of a collection.</remarks>
         public DniLayer()
         {
-            //Only used for deserialization.
             Activations = Array.Empty<double>();
             PreActivations = Array.Empty<double>();
             Parameters = new();
         }
 
         /// <summary>
-        /// Computes the output activations of the current layer.
+        /// Applies this layer's activation function to <paramref name="preActivations"/>, returning a new array.
+        /// With no activation function the values are copied through unchanged.
         /// </summary>
-        /// <remarks>If an activation function is defined, it is applied to the current activations. 
-        /// Otherwise, the raw activations are returned.</remarks>
-        /// <returns>An array of double values representing the output activations of the layer. If no activation function is
-        /// defined, the raw activations are returned.</returns>
-        public double[] Activate()
-        {
-            if (ActivationFunction != null)
-            {
-                return ActivationFunction.Activation(Activations);
-            }
-            return Activations;
-        }
+        public double[] Activate(double[] preActivations)
+            => ActivationFunction?.Activation(preActivations) ?? (double[])preActivations.Clone();
 
         /// <summary>
-        /// Computes the derivative of the activation function for the specified node.
+        /// Computes the derivative of the activation function for the specified node, evaluated at that node's
+        /// pre-activation value from the most recent training forward pass.
         /// </summary>
-        /// <remarks>This method relies on the <see cref="ActivationFunction"/> to compute the derivative.
-        /// If the <see cref="ActivationFunction"/> is <c>null</c>, the method directly returns the activation value of
-        /// the specified node.</remarks>
-        /// <param name="nodeIndex">The index of the node for which to compute the derivative. Must be a valid index within the
-        /// <c>Activations</c> collection.</param>
-        /// <returns>The derivative of the activation function for the specified node. If no activation function is set, returns
-        /// the activation value of the node itself.</returns>
         public double ActivateDerivative(int nodeIndex)
+            => ActivationFunction?.Derivative(PreActivations[nodeIndex]) ?? 1.0;
+
+        internal void EnsureAdamBuffers()
         {
-            if (ActivationFunction != null)
-            {
-                return ActivationFunction.Derivative(PreActivations[nodeIndex]);
-            }
-            return PreActivations[nodeIndex];
+            if (Gamma == null || AdamMeanGamma.Length == Gamma.Length)
+                return;
+
+            AdamMeanGamma = new double[Gamma.Length];
+            AdamVarianceGamma = new double[Gamma.Length];
+            AdamMeanBeta = new double[Gamma.Length];
+            AdamVarianceBeta = new double[Gamma.Length];
+        }
+
+        internal void AfterDeserialization()
+        {
+            Activations = new double[NodeCount];
+            PreActivations = new double[NodeCount];
+            InstantiateActivationFunction();
         }
 
         internal void InstantiateActivationFunction()
@@ -187,6 +203,9 @@ namespace NTDLS.Determinet
                 DniActivationType.SoftPlus => new DniSoftPlusFunction(Parameters),
                 _ => throw new NotImplementedException($"Unknown activation type: [{ActivationType}].")
             };
+
+            if (ActivationFunction is IDniSoftMaxFunction && LayerType != DniLayerType.Output)
+                throw new ArgumentException($"{ActivationType} is only valid on the output layer (it has no element-wise derivative).");
         }
     }
 }

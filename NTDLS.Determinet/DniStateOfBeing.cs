@@ -27,50 +27,11 @@ namespace NTDLS.Determinet
         /// </summary>
         [ProtoMember(3)] public List<DniSynapse> Synapses { get; internal set; } = new();
 
-        #region Adam (Adaptive Moment Estimation) for batch training.
-
-        //TODO: Serialize these Adam properties because the accumulated gradient statistics are gone when we resume training from a saved state.
-        //This isn't huge, it just means that the very next updates behave like vanilla SGD for a few iterations until it re-adapts.
-        //Unfortunately, ProtoBuf doesn't support serialization of "jagged" arrays.
-
         /// <summary>
-        /// Represents the first moment (mean) estimates for the Adam optimization algorithm.
+        /// Number of Adam updates applied so far, used for the optimizer's bias correction.
+        /// The per-parameter moment estimates live alongside the parameters in <see cref="DniSynapse"/> and <see cref="DniLayer"/>.
         /// </summary>
-        /// <remarks>This collection stores the accumulated gradient statistics for each weight matrix
-        /// during training. These values are used by the Adam optimizer to adjust the learning rate for each parameter.
-        /// Note: The accumulated statistics are not serialized, which means they are lost when resuming training from a
-        /// saved state. As a result, the optimizer may behave like vanilla SGD for a few iterations until the
-        /// statistics are re-adapted.</remarks>
-        public List<double[,]> AdamMeanWeights = new(); // first moment (mean).
-        /// <summary>
-        /// Represents the second moment (variance) weights used in the Adam optimization algorithm.
-        /// </summary>
-        /// <remarks>This collection stores the variance weights as a list of two-dimensional arrays,
-        /// where each array corresponds to a specific layer or parameter group. The Adam optimization algorithm uses
-        /// these weights to adjust learning rates during training.</remarks>
-        public List<double[,]> AdamVarianceWeights = new(); // second moment (variance).
-        /// <summary>
-        /// Represents the mean biases used in the Adam optimization algorithm.
-        /// </summary>
-        /// <remarks>This list stores arrays of double-precision floating-point values, where each array
-        /// corresponds to the mean bias values  for a specific layer or parameter group in the optimization process. It
-        /// is typically updated during training iterations.</remarks>
-        public List<double[]> AdamMeanBiases = new();
-        /// <summary>
-        /// Represents the variance biases used in the Adam optimization algorithm.
-        /// </summary>
-        /// <remarks>This list contains arrays of double-precision floating-point numbers, where each
-        /// array corresponds to the variance biases  for a specific layer or parameter group in the model. It is
-        /// typically used to store and update the second moment estimates  during the optimization process.</remarks>
-        public List<double[]> AdamVarianceBiases = new();
-        /// <summary>
-        /// Represents the iteration counter used for bias correction in the Adam optimization algorithm.
-        /// </summary>
-        /// <remarks>This value is incremented with each optimization step and is used to compute
-        /// bias-corrected estimates of the first and second moment vectors.</remarks>
-        public long AdamTimeStep = 0; // iteration counter for bias correction.
-
-        #endregion
+        [ProtoMember(4)] public long AdamTimeStep { get; internal set; }
 
         /// <summary>
         /// Gets or sets the labels associated with the input layer of the model.

@@ -4,43 +4,35 @@ using NTDLS.Determinet.Types;
 namespace NTDLS.Determinet.ActivationFunctions
 {
     /// <summary>
-    /// Represents the Mish activation function: f(x) = x * tanh(softplus(x))
+    /// Mish: x * tanh(softplus(x)).
     /// </summary>
-    /// <remarks>
-    /// Softplus(x) = ln(1 + exp(x))
-    /// Mish provides smooth, non-monotonic behavior improving gradient flow.
-    /// </remarks>
     public class DniMishFunction : IDniActivationFunction
     {
         /// <summary>
-        /// Gets a value indicating whether the cross-entropy method is used in the analysis.
-        /// </summary>
-        public bool UsesCrossEntropy { get; } = false;
-
-        /// <summary>
-        /// Default constructor for Mish activation function.
+        /// Initializes a new instance of the <see cref="DniMishFunction"/> class.
         /// </summary>
         public DniMishFunction(DniNamedParameterCollection param)
         {
         }
 
-        /// <summary>
-        /// Applies the activation function to each element in the input array.
-        /// </summary>
+        /// <inheritdoc/>
         public double[] Activation(double[] nodes)
         {
-            return nodes.Select(x => x * Math.Tanh(Math.Log(1 + Math.Exp(x)))).ToArray();
+            var result = new double[nodes.Length];
+            for (int i = 0; i < nodes.Length; i++)
+            {
+                double x = nodes[i];
+                result[i] = x * Math.Tanh(DniMath.SoftPlus(x));
+            }
+            return result;
         }
 
-        /// <summary>
-        /// Calculates the derivative of the activation function at the specified input value.
-        /// </summary>
+        /// <inheritdoc/>
         public double Derivative(double x)
         {
-            double sp = Math.Log(1 + Math.Exp(x)); // softplus
-            double sech2 = 1 / Math.Cosh(sp); sech2 *= sech2;
-            double sigmoid = 1 / (1 + Math.Exp(-x));
-            return Math.Tanh(sp) + x * sigmoid * sech2;
+            double tsp = Math.Tanh(DniMath.SoftPlus(x));
+            // d/dx = tanh(sp) + x * sech^2(sp) * sigmoid(x), with sech^2 = 1 - tanh^2.
+            return tsp + x * (1.0 - tsp * tsp) * DniMath.Sigmoid(x);
         }
     }
 }

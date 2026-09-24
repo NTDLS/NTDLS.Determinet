@@ -1,4 +1,5 @@
 using ProtoBuf;
+using System.Globalization;
 
 namespace NTDLS.Determinet.Types
 {
@@ -52,7 +53,8 @@ namespace NTDLS.Determinet.Types
         /// </summary>
         /// <returns>A string in the format "$[Min,Max]" where <c>Min</c> and <c>Max</c> represent the minimum and maximum values
         /// of the range, respectively.</returns>
-        public override string ToString() => $"$[{Min},{Max}]";
+        public override readonly string ToString()
+            => $"$[{Min.ToString("R", CultureInfo.InvariantCulture)},{Max.ToString("R", CultureInfo.InvariantCulture)}]";
 
         /// <summary>
         /// Converts a <see cref="DniRange"/> instance to an array of <see langword="double"/> values.
@@ -91,17 +93,7 @@ namespace NTDLS.Determinet.Types
         /// <returns>A <see cref="DniRange"/> object that represents the parsed range.</returns>
         /// <exception cref="FormatException">Thrown if the input string is not in the correct format or if the numeric values cannot be parsed.</exception>
         public static DniRange Parse(string s)
-        {
-            if (s.StartsWith("$[") && s.EndsWith("]"))
-            {
-                var parts = s[2..^1].Split(',');
-                if (parts.Length == 2 && double.TryParse(parts[0], out var min) && double.TryParse(parts[1], out var max))
-                {
-                    return new DniRange(min, max);
-                }
-            }
-            throw new FormatException("Invalid DniRange format.");
-        }
+            => TryParse(s, out var range) ? range : throw new FormatException($"Invalid DniRange format: '{s}'.");
 
         /// <summary>
         /// Attempts to parse the specified string representation of a range into a <see cref="DniRange"/> object.
@@ -120,7 +112,10 @@ namespace NTDLS.Determinet.Types
             if (s.StartsWith("$[") && s.EndsWith("]"))
             {
                 var parts = s[2..^1].Split(',');
-                if (parts.Length == 2 && double.TryParse(parts[0], out var min) && double.TryParse(parts[1], out var max))
+                if (parts.Length == 2
+                    && double.TryParse(parts[0], NumberStyles.Float, CultureInfo.InvariantCulture, out var min)
+                    && double.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out var max)
+                    && min <= max)
                 {
                     range = new DniRange(min, max);
                     return true;
