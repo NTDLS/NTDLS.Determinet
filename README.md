@@ -6,7 +6,7 @@ Determinet is a versatile multilayer perceptron neural network for .NET, designe
 In addition to the library, you'll find a test harness which includes a character recognition trainer, validator and visual testing tool.
 These provide working examples of training a model as well as generating predictions.
 
-<img width="822" height="468" alt="image" src="https://github.com/user-attachments/assets/da2362b1-73f0-44a6-a169-db525f9c4ab8" />
+<img width="819" height="465" alt="image" src="https://github.com/user-attachments/assets/0cc01d7d-84d1-44ff-8a54-c1c74797aec7" />
 
 ## Features
 
